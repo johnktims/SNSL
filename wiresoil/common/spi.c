@@ -3,45 +3,41 @@
 #include "vdip.h"
 #include <stdio.h>
 
-//**********************************************************
-//
-//  Pin definitions for SPI
-//
-//**********************************************************
+/***********************************************************
+ *  Pin definitions for SPI
+ **********************************************************/
 
 #define PORT_SDI   _LATB2	// SDI (on VDIP1) is RB6
 #define PORT_SCLK  _LATB1	// SCLK is RB5
 #define PORT_SDO   _RB3		// SDO (on VDIP1) is RB7
 #define PORT_CS    _LATB6	// CS is RB2
 
-//**********************************************************
-//
-//  Constants and variables for SPI
-//
-//**********************************************************
+
+/***********************************************************
+ * Constants and variables for SPI
+ **********************************************************/
 
 #define DIR_SPIWRITE 0
 #define DIR_SPIREAD  1
 
-//**********************************************************
-// Name: spiDelay
-//
-// Description: Short delay.
-//
-// Parameters: None.
-//
-// Returns: None.
-//
-// Comments: Uses a nop to create a very short delay.
-//
-//**********************************************************
-//#define spiDelay
 
+//**********************************************************
+/**
+ * @brief Uses a nop to create a very short delay.
+ */
+//**********************************************************
 #define spiDelay() \
  asm("nop");\
  asm("nop");
 
 
+//**********************************************************
+/**
+ * @brief Transfer data to/from the VDIP
+ * @param[in] int The direction of the transfer
+ * @param[out] char* The data to send or a buffer to fill
+ */
+//**********************************************************
 int SPI_Xfer(int spiDirection, char *pSpiData)
 {
 	unsigned char retData,
@@ -171,58 +167,33 @@ int SPI_Xfer(int spiDirection, char *pSpiData)
     return bitData;
 }
 
-//**********************************************************
-//
-// External Routines
-//
-//**********************************************************
 
 //**********************************************************
-// Name: spiInit
-//
-// Description: Initialise the SPI interface.
-//
-// Parameters: None.
-//
-// Returns: None.
-//
-// Comments: Sets up pins connecting to the SPI interface.
-//
+/**
+ * @brief Initialize the pins for the SPI interface
+ */
 //**********************************************************
 void SPI_Init(void)
 {
 
-//	TRIS_SDO = 1;			        // SDO input
-//	TRIS_SDI = 0;					// SDI output
-//	TRIS_SCLK = 0;				// SCLK output
-//	TRIS_CS = 0;				// CS output
-
-// Configure pin direction (1 for input, 0 for output)
+	// Set up digital pins
 	CONFIG_RB1_AS_DIG_OUTPUT();
 	CONFIG_RB2_AS_DIG_OUTPUT();
 	CONFIG_RB3_AS_DIG_INPUT();
 	CONFIG_RB6_AS_DIG_OUTPUT();
 
 	// Configure initial pin states
-	// SDO starts low
 	PORT_SDI = 0;
-	// SCLK starts low
 	PORT_SCLK = 0;
-	// CS starts low
 	PORT_CS = 0;
 }
+
+
 //**********************************************************
-// Name: spiReadWait
-//
-// Description: Blocking read of character from SPI bus.
-//
-// Parameters: None.
-//
-// Returns: spiData - Byte received.
-//
-// Comments: Waits until a character is read from the SPI
-//           bus and returns.
-//
+/**
+ * @brief Wait till one character is read and then return it
+ * @return char The received character
+ */
 //**********************************************************
 char SPI_ReadWait(void)
 {
@@ -238,41 +209,29 @@ char SPI_ReadWait(void)
     // the EOS, none of the output shows up.
     if(spiData == 0x0d)
     {
-        //putchar('\n');
         spiData = '\n';
     }
 
     return spiData;
 }
+
+
 //**********************************************************
-// Name: spiRead
-//
-// Description: Non-blocking read of character from SPI bus.
-//
-// Parameters: None.
-//
-// Returns: pSpiData - Byte received.
-//          int XFER_OK if data received, XFER_RETRY if not.
-//
-// Comments: Check for a character on the SPI bus and return.
-//
+/**
+ * @brief Non-blocking read of one character from SPI bus
+ * @return char The received character
+ */
 //**********************************************************
-int SPI_Read(char *pSpiData)
+char SPI_Read(char *pSpiData)
 {
 	return SPI_Xfer(DIR_SPIREAD, pSpiData);
 }
 
 //**********************************************************
-// Name: spiWrite
-//
-// Description: Blocking write of character to SPI bus.
-//
-// Parameters: spiData - Byte to be transmitted.
-//
-// Returns: None.
-//
-// Comments: Waits until a character is transmitted on the SPI bus.
-//
+/**
+ * @brief Blocking write of character to SPI bus
+ * @param[in] char The byte to be transmitted
+ */
 //**********************************************************
 void SPI_Write(char spiData)
 {
@@ -280,6 +239,12 @@ void SPI_Write(char spiData)
 }
 
 
+//**********************************************************
+/**
+ * @brief Send a string of characters to the SPI bus
+ * @param[in] const char* The string to send
+ */
+//**********************************************************
 void SPI_WriteStr(const char *spiData)
 {
     while(*spiData)

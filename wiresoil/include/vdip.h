@@ -59,7 +59,7 @@ void  VDIP_WriteFile(const char *,
 char* VDIP_ReadFile(const char *);
 
 uint32 VDIP_FileSize(const char *);
-uint32 VDIP_DirItems(void);
+uint32 VDIP_DirItemCount(void);
 
 char** VDIP_ListDir(void);
 void   VDIP_CleanupDirList(char **);

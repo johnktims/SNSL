@@ -7,16 +7,18 @@
 #include <ctype.h>
 
 
-/****************************************
+/***********************************************************
  * Pin Mappings
- ***************************************/
+ **********************************************************/
+
 // Reset pin on the VDIP
 #define RESET _LATB5
 
 
-/****************************************
+/***********************************************************
  * Macro Definitions
- ***************************************/
+ **********************************************************/
+
 // Is this a DEBUG build?
 #define DEBUG 1
 
@@ -45,7 +47,8 @@
  * @brief Initialize SPI and then Reset the VDIP
  */
 //**********************************************************
-void VDIP_Init(void){
+void VDIP_Init(void)
+{
 	DEBUG_OUT("VDIP_Init: Started.");
 	
 	// Initialize SPI
@@ -71,7 +74,8 @@ void VDIP_Init(void){
  *       has failed to sync with the VDIP.
  */
 //**********************************************************
-uint8 VDIP_Sync(void){
+uint8 VDIP_Sync(void)
+{
 	DEBUG_OUT("VDIP_Sync: Started.");
 
 	// Initialize the sync by sending and E
@@ -86,7 +90,6 @@ uint8 VDIP_Sync(void){
 	while (c != 'E')
     {
         c = SPI_ReadWait();
-        //putchar(c);
     }
 
     DEBUG_OUT("VDIP_Sync: Finished.");
@@ -118,7 +121,7 @@ uint8 VDIP_SCS(void)
 	              " In Short Command Set");
 	    return 1;
 	}
-	printf("SCS returned `%c`\n", c);
+
     DEBUG_OUT("VDIP_SCS: Finished."
               " NOT In Short Command Set");
 	return 0;
@@ -158,7 +161,7 @@ char** VDIP_ListDir(void)
 	VDIP_Sync();
 	    
     // Get the number of items in the directory
-    uint32 u32_items = VDIP_DirItems();
+    uint32 u32_items = VDIP_DirItemCount();
 
     // Allocate memory for the array of pointers
     char **data = (char**)malloc(sizeof(char*) * (u32_items + 1));
@@ -234,7 +237,7 @@ void VDIP_CleanupDirList(char **data)
  *         directory.
  */
 //**********************************************************
-uint32 VDIP_DirItems(void)
+uint32 VDIP_DirItemCount(void)
 {
     DEBUG_OUT("VDIP_ListDir: Started.");
     
@@ -375,35 +378,35 @@ void VDIP_WriteFile(const char *name, const char *data)
     
     VDIP_Sync();
 
-  	puts("##SYNC FUNCTION\n");
+  	// Put in Ascii mode
     SPI_Write(IPA);
     SPI_Write(CR);
     
-    puts("##OPEN LOG.TXT\n");
+    // Open the file for writing
     SPI_Write(OPW);
     SPI_Write(SPACE);
     SPI_WriteStr(name);
     VDIP_Sync();
 
-    puts("##WRITE TO LOG.TXT\n");
+    // Tell the VDIP how much data to expect
     SPI_Write(WRF);
     SPI_Write(SPACE);
     
-    int index = 3;
-    uint8 u8_byte = 0;
-    for(index = 3; index >= 0; index--)
+	// Shift the bytes in, MSB first
+    uint8 u8_index = 0,
+		  u8_byte  = 0;
+    for(u8_index = 32; u8_index > 0; u8_index -= 8)
     {
-        u8_byte = (uint8)(u32_size >> (8 * index));
+        u8_byte = (uint8)(u32_size >> u8_index);
         SPI_Write(u8_byte);
-        printf("`%c`:`%u`\n", u8_byte, (unsigned)u8_byte);
     }
     SPI_Write(CR);
 
-    puts("##WRITE MESSAGE\n");
+    // Write the actual message
     SPI_WriteStr(data);
     DELAY_MS(100);
 
-    puts("##CLOSE FILE\n");
+    // Close the file
     SPI_Write(CLF);
     SPI_Write(SPACE);
     SPI_WriteStr(name);
