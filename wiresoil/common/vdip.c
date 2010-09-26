@@ -8,14 +8,6 @@
 
 
 /***********************************************************
- * Pin Mappings
- **********************************************************/
-
-// Reset pin on the VDIP
-#define RESET _LATB5
-
-
-/***********************************************************
  * Macro Definitions
  **********************************************************/
 
@@ -25,12 +17,12 @@
 // Print output if this is a DEBUG build
 #if DEBUG
 #define DEBUG_OUT(msg) \
-    (puts("`"msg"`\n"))
+    (puts("`"msg"`"))
 #else
 #define DEBUG_OUT(msg)
 #endif
 
-// Remov e leading newline characters
+// Remove leading newline characters
 #define REMOVE_LEADING_NEWLINES(c) \
     while((c) == LF)               \
     {                              \
@@ -50,14 +42,10 @@
 void VDIP_Init(void)
 {
 	DEBUG_OUT("VDIP_Init: Started.");
-	
-	// Initialize SPI
-	SPI_Init();
 
-    // Configure RB5 so that it can be toggled for a reset
-	CONFIG_RB5_AS_DIG_OUTPUT();
-	
-	// Rest VDIP
+    CONFIG_RESET();
+    
+	SPI_Init();
 	VDIP_Reset();
 
 	DEBUG_OUT("VDIP_Init: Finished.");
@@ -90,6 +78,7 @@ uint8 VDIP_Sync(void)
 	while (c != 'E')
     {
         c = SPI_ReadWait();
+        putchar(c);
     }
 
     DEBUG_OUT("VDIP_Sync: Finished.");
@@ -108,7 +97,7 @@ uint8 VDIP_SCS(void)
     DEBUG_OUT("VDIP_SCS: Started. Setting"
 	          " Short Command Set");
 	          
-	VDIP_Sync();
+	//VDIP_Sync();
 
 	SPI_WriteStr(SCS);
 	char c = SPI_ReadWait();
@@ -158,7 +147,7 @@ char** VDIP_ListDir(void)
 {
     DEBUG_OUT("VDIP_ListDir: Started.");
 
-	VDIP_Sync();
+	//VDIP_Sync();
 	    
     // Get the number of items in the directory
     uint32 u32_items = VDIP_DirItemCount();
@@ -239,7 +228,7 @@ void VDIP_CleanupDirList(char **data)
 //**********************************************************
 uint32 VDIP_DirItemCount(void)
 {
-    DEBUG_OUT("VDIP_ListDir: Started.");
+    DEBUG_OUT("VDIP_DirItemCount: Started.");
     
 	VDIP_Sync();
 
@@ -267,7 +256,7 @@ uint32 VDIP_DirItemCount(void)
         c = SPI_ReadWait();
     }
 
-    DEBUG_OUT("VDIP_DirItems: Finished.");
+    DEBUG_OUT("VDIP_DirItemCount: Finished.");
     return u32_items;
 }
 
@@ -280,9 +269,9 @@ uint32 VDIP_DirItemCount(void)
 //**********************************************************
 uint32 VDIP_FileSize(const char *name)
 {
-    DEBUG_OUT("VDIP_FileSize: Started.\n");
+    DEBUG_OUT("VDIP_FileSize: Started.");
     
-	VDIP_Sync();
+	//VDIP_Sync();
 
     // Make a DIR request
     SPI_Write(DIR);
@@ -336,7 +325,7 @@ char* VDIP_ReadFile(const char *name)
 {
     DEBUG_OUT("VDIP_ReadFile: Started.");
 	
-	VDIP_Sync();
+	//VDIP_Sync();
 
     uint32 u32_bytes = VDIP_FileSize(name) + 1,
            u32_index = 0;
@@ -368,21 +357,24 @@ char* VDIP_ReadFile(const char *name)
 /**
  * @brief Open a file for writing
  * @param[in] name The name of the file
+ * @param[in] data The data to write
  */
 //**********************************************************
 void VDIP_WriteFile(const char *name, const char *data)
 {
     DEBUG_OUT("VDIP_WriteFile: Started.");
 
-    uint32 u32_size = strlen(data);
-    
+    uint32 u32_size  = strlen(data);
+           //u32_index = 0;
+
     VDIP_Sync();
 
-  	// Put in Ascii mode
-    SPI_Write(IPA);
+  	DEBUG_OUT("Put in Ascii mode");
+    //SPI_Write(IPA);
+    SPI_Write(IPH);
     SPI_Write(CR);
-    
-    // Open the file for writing
+
+    DEBUG_OUT("Open the file for writing");
     SPI_Write(OPW);
     SPI_Write(SPACE);
     SPI_WriteStr(name);
@@ -391,25 +383,27 @@ void VDIP_WriteFile(const char *name, const char *data)
     // Tell the VDIP how much data to expect
     SPI_Write(WRF);
     SPI_Write(SPACE);
-    
+
 	// Shift the bytes in, MSB first
-    uint8 u8_index = 0,
-		  u8_byte  = 0;
-    for(u8_index = 32; u8_index > 0; u8_index -= 8)
+    int8 i8_byte  = 0;
+    int32 u32_index;
+    for(u32_index = 24; u32_index >= 0; u32_index -= 8)
     {
-        u8_byte = (uint8)(u32_size >> u8_index);
-        SPI_Write(u8_byte);
+        i8_byte = (int8)(u32_size >> u32_index);
+        printf("WRF: %d/%u\n", i8_byte, (unsigned)u32_size);
+        SPI_Write(i8_byte);
     }
     SPI_Write(CR);
 
-    // Write the actual message
+    DEBUG_OUT("Write the actual message.");
     SPI_WriteStr(data);
     DELAY_MS(100);
 
-    // Close the file
+    DEBUG_OUT("Close the file");
     SPI_Write(CLF);
     SPI_Write(SPACE);
     SPI_WriteStr(name);
+    DELAY_MS(100);
     VDIP_Sync();
 
     DEBUG_OUT("VDIP_WriteFile: Finished.");

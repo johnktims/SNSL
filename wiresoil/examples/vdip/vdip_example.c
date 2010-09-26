@@ -6,32 +6,38 @@
 
 int main(void)
 {
-    __builtin_write_OSCCONL(OSCCON | 0x02);
+    //__builtin_write_OSCCONL(OSCCON | 0x02);
     configBasic(HELLO_MSG);
 
 	//config SPI for VDIP1
 	VDIP_Init();
 
-	//syncs VDIP with PIC			
+	//syncs VDIP with PIC
 	VDIP_Sync();
 
 	// put vdip in short command mode
 	VDIP_SCS();
 
-	VDIP_Sync();
+	//printf("FileSize `FUN.TXT`: `%u`\n", (unsigned)VDIP_FileSize("FUN.TXT"));
+	//printf("FileSize `FLIP.TXT`: `%u`\n", (unsigned)VDIP_FileSize("FLIP.TXT"));
 
+	//VDIP_Sync();
+	//puts(VDIP_ReadFile("FUN.TXT"));
+	//puts(VDIP_ReadFile("FUN.TXT"));
+
+    /*
 	puts("##SYNC FUNCTION\n");
     SPI_Write(0x90); //ipa
     SPI_Write(0x0d); // cr
 
     puts("##OPEN LOG.TXT\n");
-    SPI_Write(0x09);  //OPW
+    SPI_Write(0x09); // OPW
     SPI_Write(0x20); // space
     SPI_WriteStr("log.txt");
     VDIP_Sync();
 
     puts("##WRITE TO LOG.TXT\n");
-    SPI_Write(0x08); //WRF
+    SPI_Write(0x08); // WRF
     SPI_Write(0x20); // space
     SPI_Write(4);
     SPI_Write(0x0d); // CR
@@ -45,9 +51,56 @@ int main(void)
     SPI_Write(0x20); //space
     SPI_WriteStr("LOG.TXT");
     VDIP_Sync();
-    DELAY_MS(1000);
+    //DELAY_MS(1000);
+    
+    VDIP_Sync();
+    */
+
+    /*
+    VDIP_WriteFile("LOG1.TXT", "This is a test.");
+    VDIP_WriteFile("LOG1.TXT", "This is a test.");
+    VDIP_WriteFile("LOG1.TXT", "This is a test.");
+    VDIP_WriteFile("LOG1.TXT", "This is a test.");
+    
+    VDIP_WriteFile("LOG4.TXT", "Test sync.1231242424");
+    VDIP_WriteFile("LOG4.TXT", "Test sync.123333");
+    VDIP_WriteFile("LOG4.TXT", "Test sync.2312323");
+    VDIP_WriteFile("LOG4.TXT", "Test sync.");
+    VDIP_WriteFile("LOG4.TXT", "Test sync.");
+    VDIP_WriteFile("LOG4.TXT", "Test sync.");
+    
+    VDIP_WriteFile("LOG1.TXT", "This is a test.");
+    */
+    
+    
+    //VDIP_WriteFile("LOG2.TXT", "This is a test. A little bigger....");
+    //char *contents = VDIP_ReadFile("LOG.TXT");
+    
+    //VDIP_WriteFile("LOG2.TXT", contents);
+    VDIP_WriteFile("LOG1.TXT", "This is a test.");
+    VDIP_WriteFile("LOG2.TXT", "This is a test.");
+    VDIP_WriteFile("LOG2.TXT", "This is a test.");
+    VDIP_WriteFile("LOG4.TXT", "Test sync.1231242424");
+    VDIP_WriteFile("LOG5.TXT", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    VDIP_WriteFile("LOG6.TXT", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+        VDIP_WriteFile("LOG7.TXT", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.");
+
+    VDIP_WriteFile("LOG10.TXT", "Some more really long crap that I hope is going to excede two hundred and fifty six really big characters that do not mean anything or have any purpose or meaning except to say that this really dumb program is able to handle more than two hundred and fifty six characters of data to send to a file which is necessary for sleepy network soild logger to do its job");
 
     VDIP_WriteFile("TEST.TXT", "This is a test. YAY! This sentence needs to be over two hundred and fifty six characters long. I hope I have achieved this. This is a test. YAY! This sentence needs to be over two hundred and fifty six characters long. I hope I have achieved this. This is a test. YAY! This sentence needs to be over two hundred and fifty six characters long. I hope I have achieved this.");
+
+
+/*
+    VDIP_Sync();
+	char **data = VDIP_ListDir();
+	uint32 u32_index = 0;
+	while(data[u32_index] != '\0')
+	{
+		printf("`%u`:`%s`\n", (unsigned)u32_index, data[u32_index]);
+		++u32_index;
+	}
+	VDIP_CleanupDirList(data);
+*/
 
     puts("FERTIG.\n");
     while(1){}
@@ -141,7 +194,8 @@ int main(void)
 	free(str);
 // }}}
 
-    	
+
+    /*    	
 	char **data = VDIP_ListDir();
 	uint32 u32_index = 0;
 	while(data[u32_index] != '\0')
@@ -150,7 +204,7 @@ int main(void)
 		++u32_index;
 	}
 	VDIP_CleanupDirList(data);
-	
+	*/
 	puts("FERTIG.\n");
 	while(1){}
 	return 0;

@@ -4,17 +4,22 @@
 #include <stdio.h>
 
 /***********************************************************
- *  Pin definitions for SPI
+ * Pin Mappings
  **********************************************************/
 
-#define PORT_SDI   _LATB2	// SDI (on VDIP1) is RB6
-#define PORT_SCLK  _LATB1	// SCLK is RB5
-#define PORT_SDO   _RB3		// SDO (on VDIP1) is RB7
-#define PORT_CS    _LATB6	// CS is RB2
+#define PORT_SCLK  _LATB1	// AD0(SCLK) -> RB1
+#define PORT_SDI   _LATB2	// AD1(SDI)  -> RB2
+#define PORT_SDO   _RB3		// AD2(SDO)  -> RB3
+#define PORT_CS    _LATB12	// AD3(CS)   -> RB12
+
+#define CONFIG_SCLK() CONFIG_RB1_AS_DIG_OUTPUT()
+#define CONFIG_SDI()  CONFIG_RB2_AS_DIG_OUTPUT()
+#define CONFIG_SDO()  CONFIG_RB3_AS_DIG_INPUT()
+#define CONFIG_CS()   CONFIG_RB12_AS_DIG_OUTPUT()
 
 
 /***********************************************************
- * Constants and variables for SPI
+ * Common Characters
  **********************************************************/
 
 #define DIR_SPIWRITE 0
@@ -176,11 +181,11 @@ int SPI_Xfer(int spiDirection, char *pSpiData)
 void SPI_Init(void)
 {
 
-	// Set up digital pins
-	CONFIG_RB1_AS_DIG_OUTPUT();
-	CONFIG_RB2_AS_DIG_OUTPUT();
-	CONFIG_RB3_AS_DIG_INPUT();
-	CONFIG_RB6_AS_DIG_OUTPUT();
+    CONFIG_SCLK();
+    CONFIG_SDI();
+    CONFIG_SDO();
+    CONFIG_CS();
+
 
 	// Configure initial pin states
 	PORT_SDI = 0;

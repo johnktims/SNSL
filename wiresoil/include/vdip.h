@@ -2,9 +2,20 @@
 #define _VDIP1_FUNC_H_
 
 
+/***********************************************************
+ * Pin Mappings
+ **********************************************************/
+
+// Reset pin on the VDIP
+#define RESET _LATB13
+
+#define CONFIG_RESET() CONFIG_RB13_AS_DIG_OUTPUT()
+
+
 /****************************************
- * Common characters
+ * Common Characters
  ***************************************/
+ 
 // Carriage Return
 #define CR 0xd
 
@@ -32,6 +43,9 @@
 // IPA: Ascii
 #define IPA 0x90
 
+// IPA: Binary
+#define IPH 0x91
+
 // Space
 #define SPACE 0x20
 
@@ -48,6 +62,7 @@
 /****************************************
  * Function Definitions
  ***************************************/
+
 void  VDIP_Init(void);
 void  VDIP_Reset(void);
 void  VDIP_Sync_E(void);
