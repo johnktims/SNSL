@@ -423,7 +423,8 @@ void printResetCause(void) {
 */
 //this function is processor specific
 #if (defined(__PIC24HJ32GP202__) || \
-   defined(__PIC24FJ64GA002__))
+   defined(__PIC24FJ64GA002__) || \
+   defined(__PIC24FJ64GA102__))
 void configPinsForLowPower(void) {
   // Configure all digital I/O pins for input
   TRISB = 0xFFFF;

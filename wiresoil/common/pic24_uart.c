@@ -523,11 +523,11 @@ void configUART2(uint32 u32_baudRate) {
   // statements below for more information.
 #if defined(EXPLORER16_100P)
 //nothing to do, pins mapped to fixed ports
-#elif (2 == 1)             //change pin mappings for your device
-  CONFIG_RP10_AS_DIG_PIN();                //RX RP pin must be digital
-  CONFIG_U2RX_TO_RP(10);                 //U2RX <- RP10
-  CONFIG_RP11_AS_DIG_PIN();                //TX RP pin must be digital
-  CONFIG_U2TX_TO_RP(11);                 //U2TX -> RP11
+#elif (1 == 1)             //change pin mappings for your device
+  CONFIG_RP5_AS_DIG_PIN();                //RX RP pin must be digital
+  CONFIG_U2RX_TO_RP(5);                 //U2RX <- RP5
+  CONFIG_RP6_AS_DIG_PIN();                //TX RP pin must be digital
+  CONFIG_U2TX_TO_RP(6);                 //U2TX -> RP11
   DISABLE_U2TX_ANALOG();                 //turn off any analog functionality on pin (may be needed if pin is hardmapped and RPx does not exist)
   DISABLE_U2RX_ANALOG();                 //turn off any analog functionality on pin (may be needed if pin is hardmapped and RPx does not e
 #else
