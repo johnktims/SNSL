@@ -12,7 +12,9 @@
  **********************************************************/
 
 // Is this a DEBUG build?
-#define DEBUG 1
+#ifndef DEBUG
+#define DEBUG 0
+#endif // DEBUG
 
 // Print output if this is a DEBUG build
 #if DEBUG
@@ -41,14 +43,21 @@
 //**********************************************************
 void VDIP_Init(void)
 {
-	DEBUG_OUT("VDIP_Init: Started.");
+    DEBUG_OUT("VDIP_Init: Started.");
 
     CONFIG_RESET();
     
-	SPI_Init();
-	VDIP_Reset();
+    SPI_Init();
 
-	DEBUG_OUT("VDIP_Init: Finished.");
+    VDIP_Reset();
+	
+    // Syncs VDIP with PIC
+    VDIP_Sync();
+
+    // Put vdip in short command mode
+    VDIP_SCS();
+
+    DEBUG_OUT("VDIP_Init: Finished.");
 }
 
 
@@ -78,7 +87,7 @@ uint8 VDIP_Sync(void)
 	while (c != 'E')
     {
         c = SPI_ReadWait();
-        putchar(c);
+        //putchar(c);
     }
 
     DEBUG_OUT("VDIP_Sync: Finished.");
@@ -331,7 +340,7 @@ char* VDIP_ReadFile(const char *name)
            u32_index = 0;
     char *data = (char*)malloc(u32_bytes);
 
-    printf("ReadFile->FileSize = `%u`\n", (unsigned)u32_bytes);
+    //printf("ReadFile->FileSize = `%u`\n", (unsigned)u32_bytes);
 
     SPI_Write(RD);
     SPI_Write(SPACE);
@@ -365,7 +374,6 @@ void VDIP_WriteFile(const char *name, const char *data)
     DEBUG_OUT("VDIP_WriteFile: Started.");
 
     uint32 u32_size  = strlen(data);
-           //u32_index = 0;
 
     VDIP_Sync();
 
@@ -390,7 +398,7 @@ void VDIP_WriteFile(const char *name, const char *data)
     for(u32_index = 24; u32_index >= 0; u32_index -= 8)
     {
         i8_byte = (int8)(u32_size >> u32_index);
-        printf("WRF: %d/%u\n", i8_byte, (unsigned)u32_size);
+        //printf("WRF: %d/%u\n", i8_byte, (unsigned)u32_size);
         SPI_Write(i8_byte);
     }
     SPI_Write(CR);

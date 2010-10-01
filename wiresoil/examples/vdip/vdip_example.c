@@ -1,5 +1,4 @@
 #include "pic24_all.h"
-#include "spi.h"
 #include "vdip.h"
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,6 +1,7 @@
-#ifndef _VDIP1_FUNC_H_
-#define _VDIP1_FUNC_H_
+#ifndef _VDIP_FUNC_H_
+#define _VDIP_FUNC_H_
 
+#include "pic24_all.h"
 
 /***********************************************************
  * Pin Mappings
@@ -79,4 +80,4 @@ uint32 VDIP_DirItemCount(void);
 char** VDIP_ListDir(void);
 void   VDIP_CleanupDirList(char **);
 
-#endif
+#endif // VDIP_H
