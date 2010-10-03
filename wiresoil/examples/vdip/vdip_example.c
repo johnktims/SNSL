@@ -1,4 +1,7 @@
 #include "pic24_all.h"
+
+#define DEBUG 1
+
 #include "vdip.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,15 +10,20 @@ int main(void)
 {
     //__builtin_write_OSCCONL(OSCCON | 0x02);
     configBasic(HELLO_MSG);
+	outString("Hello world");
 
 	//config SPI for VDIP1
 	VDIP_Init();
 
+	VDIP_Reset();
+
+	VDIP_Init();
+
 	//syncs VDIP with PIC
-	VDIP_Sync();
+	//VDIP_Sync();
 
 	// put vdip in short command mode
-	VDIP_SCS();
+	//VDIP_SCS();
 
 	//printf("FileSize `FUN.TXT`: `%u`\n", (unsigned)VDIP_FileSize("FUN.TXT"));
 	//printf("FileSize `FLIP.TXT`: `%u`\n", (unsigned)VDIP_FileSize("FLIP.TXT"));

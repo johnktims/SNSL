@@ -1,6 +1,7 @@
 #include "pic24_all.h"
 #include <string.h>
 #include <stdio.h>
+#include "snsl.h"
 #include "packet.h"
 
 #define SLEEP_INPUT _RB14
@@ -99,16 +100,21 @@ void sendEndPoll(void) {
 
 int main(void) {
 	configClock();
-	configPinsForLowPower();
+	//configPinsForLowPower();
 	configHeartbeat();
 	configDefaultUART(DEFAULT_BAUDRATE); //uart2 >> SNAP Node
 	configUART1(DEFAULT_BAUDRATE); //uart1 >> debug output
-
+	
 	CONFIG_SLEEP_INPUT();
 
 	outChar1('\n');
 
+	//char data[2][3] = {{0x00, 0x32, 0x64},
+	//			       {0x00, 0x32, 0x77}};
+
 	uint8 u8_returnVal = 0x00;
+    uint32 u32_index = 0;
+    uint8 u8_index = 0;
 
 	if (SLEEP_INPUT) {
 		_DOZE = 8; //choose divide by 32
@@ -120,10 +126,12 @@ int main(void) {
 					sendStayAwake();
 					WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
 
-					// Poll each of the nodes
+
+					//DELAY_MS(20000);
+					//doPoll('\x00', '\x32', '\x64');
+					VDIP_Init();
 					char **data = SNSL_ParseNodeNames();
-                    uint32 u32_index = 0;
-                    uint8 u8_index = 0;
+					// Poll each of the nodes
                     while(data[u32_index] != '\0')
                     {
                         doPoll(data[u32_index][0],
@@ -134,6 +142,7 @@ int main(void) {
 					sendEndPoll();
 
                     VDIP_CleanupDirList(data);
+					VDIP_Reset();
 				}
 			}
 		}

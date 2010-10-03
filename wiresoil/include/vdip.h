@@ -9,8 +9,10 @@
 
 // Reset pin on the VDIP
 #define RESET _LATB13
-
 #define CONFIG_RESET() CONFIG_RB13_AS_DIG_OUTPUT()
+
+#define POWER _LATB7
+#define CONFIG_POWER() CONFIG_RB7_AS_DIG_OUTPUT()
 
 
 /***********************************************************
