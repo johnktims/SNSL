@@ -1,6 +1,7 @@
 #include "pic24_all.h"
 #include <string.h>
 #include <stdio.h>
+#include "snsl.h"
 #include "packet.h"
 
 #define SLEEP_INPUT _RB14
@@ -9,12 +10,12 @@
 inline void CONFIG_SLEEP_INPUT()  {
   CONFIG_RB14_AS_DIG_INPUT();     //use RB14 for mode input
   DISABLE_RB14_PULLUP();
-  DELAY_US(1);                    
+  DELAY_US(1);
 }
 
 uint8 isMeshUp(void) {
 	uint8 u8_c;
-	
+
 	u8_c = inChar();
 	if (u8_c == 0x04) {
 		while (!isCharReady()) {
@@ -34,7 +35,7 @@ uint8 isMeshUp(void) {
 }
 
 //format: 0x1E + length + groupID LSB + grpID MSB + TTL + 0x02 + 'sleepyNodeFalse'
-void sendStayAwake(void) {	
+void sendStayAwake(void) {
 	const char sz_data[] = "sleepyModeFalse";
 
 	SendPacketHeader(); //0x1E
@@ -95,7 +96,7 @@ void sendEndPoll(void) {
 	outChar(0x02);	//MRPC packet type
 	outString(sz_data);
 }
-	
+
 
 int main(void) {
 	configClock();
@@ -105,7 +106,7 @@ int main(void) {
 	configUART1(DEFAULT_BAUDRATE); //uart1 >> debug output
 
 	CONFIG_SLEEP_INPUT();
-	
+
 	outChar1('\n');
 
 	uint8 u8_returnVal = 0x00;
@@ -119,14 +120,34 @@ int main(void) {
 				if (isMeshUp() == 0x01) {
 					sendStayAwake();
 					WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
+<<<<<<< .mine
+
+					// Poll each of the nodes
+					char **data = SNSL_ParseNodeNames();
+                    uint32 u32_index = 0;
+                    uint8 u8_index = 0;
+                    while(data[u32_index] != '\0')
+                    {
+                        doPoll(data[u32_index][0],
+                               data[u32_index][1],
+                               data[u32_index][2]);
+                        ++u32_index;
+                    }
+=======
 					u8_returnVal = doPoll('\x00', '\x32', '\x64');
 					u8_returnVal = 0x00;
 					outChar1('F');
 					u8_returnVal = doPoll('\x00', '\x32', '\x77');
 					while (u8_returnVal == 0x00) {
 					}
+>>>>>>> .r10
 					sendEndPoll();
-				}				
+<<<<<<< .mine
+
+                    VDIP_CleanupDirList(data);
+=======
+>>>>>>> .r10
+				}
 			}
 		}
 	}
@@ -135,7 +156,7 @@ int main(void) {
 	U2STAbits.UTXEN = 0;
 	while (1) {
 		SLEEP();
-	}			
-		
+	}
+
 	return 0;
 }
