@@ -1,7 +1,6 @@
 #include "pic24_all.h"
 #include <string.h>
 #include <stdio.h>
-#include "snsl.h"
 #include "packet.h"
 
 #define SLEEP_INPUT _RB14
@@ -120,7 +119,6 @@ int main(void) {
 				if (isMeshUp() == 0x01) {
 					sendStayAwake();
 					WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
-<<<<<<< .mine
 
 					// Poll each of the nodes
 					char **data = SNSL_ParseNodeNames();
@@ -133,20 +131,9 @@ int main(void) {
                                data[u32_index][2]);
                         ++u32_index;
                     }
-=======
-					u8_returnVal = doPoll('\x00', '\x32', '\x64');
-					u8_returnVal = 0x00;
-					outChar1('F');
-					u8_returnVal = doPoll('\x00', '\x32', '\x77');
-					while (u8_returnVal == 0x00) {
-					}
->>>>>>> .r10
 					sendEndPoll();
-<<<<<<< .mine
 
                     VDIP_CleanupDirList(data);
-=======
->>>>>>> .r10
 				}
 			}
 		}
