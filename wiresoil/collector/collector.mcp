@@ -37,6 +37,7 @@ file_009=.
 file_010=.
 file_011=.
 file_012=.
+file_013=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -51,6 +52,7 @@ file_009=no
 file_010=no
 file_011=no
 file_012=no
+file_013=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -65,6 +67,7 @@ file_009=no
 file_010=no
 file_011=no
 file_012=no
+file_013=no
 [FILE_INFO]
 file_000=..\common\pic24_clockfreq.c
 file_001=..\common\pic24_configbits.c
@@ -76,9 +79,10 @@ file_006=..\common\spi.c
 file_007=..\common\vdip.c
 file_008=collector.c
 file_009=..\common\snsl.c
-file_010=..\include\pic24_all.h
-file_011=..\include\vdip.h
-file_012=..\include\snsl.h
+file_010=..\common\packet.c
+file_011=..\include\pic24_all.h
+file_012=..\include\vdip.h
+file_013=..\include\snsl.h
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}
 suite_state=

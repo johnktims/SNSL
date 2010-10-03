@@ -1,7 +1,6 @@
 #include "pic24_all.h"
 #include "packet.h"
 
-
 void WriteBuffer(char * ptrData, unsigned int Size) {
   unsigned int DataCount;
 
@@ -21,4 +20,3 @@ void sendPacketChar(char b) {
  outChar(APP_STRING_DATA);
  outChar(b);
 } 
-

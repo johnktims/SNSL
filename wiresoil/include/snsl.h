@@ -1,6 +1,6 @@
 #ifndef SNSL_H
 #define SNSL_H
-#include <stdio.h>
+
 #include "vdip.h"
 
 #define MAX_NODE_NAME_LEN 3+1
