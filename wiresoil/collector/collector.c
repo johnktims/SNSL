@@ -1,8 +1,4 @@
-#define DEBUG 1
-
 #include "pic24_all.h"
-#include "snsl.h"
-
 #include <string.h>
 #include <stdio.h>
 #include "packet.h"
@@ -107,8 +103,6 @@ int main(void) {
 	configHeartbeat();
 	configDefaultUART(DEFAULT_BAUDRATE); //uart2 >> SNAP Node
 	configUART1(DEFAULT_BAUDRATE); //uart1 >> debug output
-	
-	VDIP_Init();
 
 	CONFIG_SLEEP_INPUT();
 	
@@ -125,21 +119,13 @@ int main(void) {
 				if (isMeshUp() == 0x01) {
 					sendStayAwake();
 					WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
-					
-					// Poll each of the nodes
-					char **data = SNSL_ParseNodeNames();
-                    uint32 u32_index = 0;
-                    uint8 u8_index = 0;
-                    while(data[u32_index] != '\0')
-                    {
-                        doPoll(data[u32_index][0],
-                               data[u32_index][1],
-                               data[u32_index][2]);
-                        ++u32_index;
-                    }
+					u8_returnVal = doPoll('\x00', '\x32', '\x64');
+					u8_returnVal = 0x00;
+					outChar1('F');
+					u8_returnVal = doPoll('\x00', '\x32', '\x77');
+					while (u8_returnVal == 0x00) {
+					}
 					sendEndPoll();
-                        
-                    VDIP_CleanupDirList(data);
 				}				
 			}
 		}
@@ -153,34 +139,3 @@ int main(void) {
 		
 	return 0;
 }
-
-/*
-int main(void)
-{
-    configBasic(HELLO_MSG);
-
-    // Config SPI for VDIP1
-    VDIP_Init();
-
-    VDIP_Sync();
-    char **data = SNSL_ParseNodeNames();
-    uint32 u32_index = 0;
-    uint8 u8_index = 0;
-    while(data[u32_index] != '\0')
-    {
-        for(u8_index = 0; u8_index < 3; ++u8_index)
-        {
-            printf("[`%u`,`%u`] =`0x%X`\n",
-                (unsigned)u32_index, (unsigned)u8_index,
-                data[u32_index][u8_index]);
-        } 
-        puts("\n");
-        ++u32_index;
-    }
-    VDIP_CleanupDirList(data);
-
-    puts("FERTIG.\n");
-    while(1){}
-    return 0;
-}
-*/
