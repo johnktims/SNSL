@@ -1,8 +1,6 @@
 #include "pic24_all.h"
 #include "packet.h"
 
-#define SLEEP_INPUT	_RB14
-
 typedef union _unionRTCC {
 	struct { //four 16 bit registers
 				uint8 yr;
@@ -63,15 +61,24 @@ void readRTCC(void) {
 	for (u8_i = 0; u8_i < 4; u8_i++) u_RTCC.regs[u8_i] = RTCVAL;
 }
 
-void parseInput(void) {
+void parseInput(void){
 	uint8 u8_c;
+  
+   	u8_c = inChar();
+   	outChar1(u8_c);
+   	if (u8_c != MONITOR_REQUEST_DATA_STATUS) return;  
 
-	u8_c = inChar();
-	outChar1(u8_c);
-	if (u8_c != MONITOR_REQUEST_DATA_STATUS) return;
-	
-	//while (!RCFGCALbits.RTCSYNC) {
-	//}
+/*	SendPacketHeader();
+	outChar(6);
+	outChar(APP_SMALL_DATA);
+	outChar(0xB2);
+	outChar(0xB3);
+	outChar(0xB4);
+	outChar(0xB5);
+	outChar(0xB6);*/
+
+	while (!RCFGCALbits.RTCSYNC) {
+	}
 	readRTCC();
 
 	SendPacketHeader();
@@ -88,41 +95,52 @@ void parseInput(void) {
 	outString("10tempData");
 	outString("8redData");
 	outString("rV");
+	
 }
 
+#define SLEEP_INPUT _RB14
+
+/// Switch1 configuration
 inline void CONFIG_SLEEP_INPUT()  {
-  CONFIG_RB14_AS_DIG_INPUT();     //use RB14 for mode input
-  DISABLE_RB14_PULLUP();
-  DELAY_US(1);                    
+	CONFIG_RB14_AS_DIG_INPUT();     //use RB14 for mode input
+  	DISABLE_RB14_PULLUP();
+  	DELAY_US(1);                    
 }
 
 int main(void) {
-	configClock();
-	configDefaultUART(DEFAULT_BAUDRATE);
+  	configClock();
+  	configDefaultUART(DEFAULT_BAUDRATE); //this is UART2
+
+	if (_POR) {
+		_POR = 0;    //clear POR bit, init any persistent variables
+	}
 
 	CONFIG_SLEEP_INPUT();
-
+ 
 	__builtin_write_OSCCONL(OSCCON | 0x02);
+	DELAY_MS(50);
 	getDateFromUser();
 	setRTCC();
 
-	if (SLEEP_INPUT) {
-		_DOZE = 8;	//choose divide by 32
-		while (SLEEP_INPUT) {
-			_DOZEN = 1;	//enable doze mode while waiting on poll
-			if (isCharReady()) {
-				_DOZEN = 0;	//ramp clock back up to normal
-				parseInput();	//satisfy the polling request
-			}
-		}
-	}
+ 	if (SLEEP_INPUT) {
+ 		_DOZE = 8; //chose divide by 32 
+   		while (SLEEP_INPUT) {
+    		_DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
+    		if (isCharReady()) {
+       			_DOZEN = 0;
+				outChar1('*');
+       			parseInput();  //satisfy the polling
+    		} 
+   		}
+ 	}
 
-	WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
-	U2MODEbits.UARTEN = 0;
-	U2STAbits.UTXEN = 0;
-	while (1) {
-		SLEEP();
-	}
-	
-	return 0;
+ 	//now sleep until next MCLR
+ 	WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
+ 	//disable UART2 to save power.
+ 	U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
+ 	U2STAbits.UTXEN = 0;                      //disable the transmitter
+ 	while (1) {
+    	SLEEP();         //macro for asm("pwrsav #0")
+ 	} 
+ 	return 0;
 }
