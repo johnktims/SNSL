@@ -84,7 +84,6 @@ void parseInput(void){
 	SendPacketHeader();
 	outChar(39);
 	outChar(APP_SMALL_DATA);
-	outString("12_node_test");
 	//outString("MDYHMS");
 	outChar(u_RTCC.u8.month);
 	outChar(u_RTCC.u8.date);
@@ -95,7 +94,7 @@ void parseInput(void){
 	outString("10tempData");
 	outString("8redData");
 	outString("rV");
-	
+	outString("12_node_test");
 }
 
 #define SLEEP_INPUT _RB14
@@ -127,8 +126,10 @@ int main(void) {
 	CONFIG_SLEEP_INPUT();
 	CONFIG_TEST_SWITCH();
 
-	outString1("Hello World\n");
-	WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
+	//_PERSISTENT
+
+	//outString1("Hello World\n");
+	//WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
 
 	if (!TEST_SWITCH) {
 		outString1("In test mode\n");

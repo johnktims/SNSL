@@ -69,17 +69,18 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 
     uint8 u8_c;
 	uint8 u8_i = 0;
-
+/*
     // Throw away the Start of Header
-    blocking_inChar();
+    outUint81(blocking_inChar());
     
     // Throw away the next three address bytes
-    blocking_inChar();
-    blocking_inChar();
-    blocking_inChar();
+    outUint81(blocking_inChar());
+    outUint81(blocking_inChar());
+    outUint81(blocking_inChar());
     
     // Store the size of the incoming payload
-    uint8 size = blocking_inChar();
+    //uint8 size = blocking_inChar();
+	uint8 size = 39;
     
     // Allocate memory for message + newline + null
     uint8 *poll_data = (uint8*)malloc(sizeof(uint8)*(size+2));
@@ -87,10 +88,50 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
     poll_data[size+1] = 0x0;
 
     u8_i = 0;
-    while(u8_i < size)
+	u8_c = blocking_inChar();
+	outUint81(u8_c);
+    //while(u8_i < size && u8_c != 0x0)
+	outString1("\nIncoming:`");
+	while(u8_i < size)
     {
-        poll_data[u8_i++] = blocking_inChar();
-    }
+        poll_data[u8_i++] = u8_c;
+		u8_c = blocking_inChar();
+		outChar1(u8_c);
+    }*/
+
+	uint8 poll_data[40];
+	poll_data[38] = '\n';
+	poll_data[39] = '\0';
+
+	uint8 tmp = 0;
+	uint8 packet_length = 0;
+	for(tmp = 0; tmp < 6; tmp++) {
+		if (tmp == 4) packet_length = blocking_inChar();
+		else blocking_inChar();
+	}
+
+	for (tmp = 0; tmp < packet_length - 1; tmp++) {
+		/*if (isCharReady()) {
+			//outUint81(inChar());
+			//u8_c = inChar();
+			poll_data[tmp] = inChar();
+			tmp++;
+		}*/
+		poll_data[tmp] = blocking_inChar();
+	}
+	outString1("PACKET:`");
+	tmp = 0;
+	for(tmp = 0; tmp < 39; tmp++)
+	{
+		outUint81(poll_data[tmp]);
+	}
+	outString1("`\n");
+	for(tmp = 0; tmp < 39; tmp++)
+	{
+		outChar1(poll_data[tmp]);
+	}
+
+	VDIP_WriteFile("DATA.TXT", poll_data);
     
     /*
     // Store the date strings
@@ -106,11 +147,12 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
     */
 
 	outString1("\nPACKET:`");
-	outString1(poll_data);
+	//outString1(poll_data);
 	outString1("`\n");
 
-    VDIP_WriteFile("DATA.TXT", poll_data);
+   // VDIP_WriteFile("DATA.TXT", poll_data);
 	outChar1('\n');
+	//free(poll_data);
 	return 0x01;
 }
 
