@@ -99,48 +99,71 @@ void parseInput(void){
 }
 
 #define SLEEP_INPUT _RB14
+#define TEST_SWITCH _RB8
 
-/// Switch1 configuration
+/// Sleep Input pin configuration
 inline void CONFIG_SLEEP_INPUT()  {
 	CONFIG_RB14_AS_DIG_INPUT();     //use RB14 for mode input
   	DISABLE_RB14_PULLUP();
   	DELAY_US(1);                    
 }
 
+// Test Mode Switch pin configuration
+inline void CONFIG_TEST_SWITCH() {
+	CONFIG_RB8_AS_DIG_INPUT();
+	ENABLE_RB8_PULLUP();
+	DELAY_US(1);
+}
+
 int main(void) {
   	configClock();
   	configDefaultUART(DEFAULT_BAUDRATE); //this is UART2
+	configUART1(DEFAULT_BAUDRATE);
 
 	if (_POR) {
 		_POR = 0;    //clear POR bit, init any persistent variables
 	}
 
 	CONFIG_SLEEP_INPUT();
- 
-	__builtin_write_OSCCONL(OSCCON | 0x02);
-	DELAY_MS(50);
-	getDateFromUser();
-	setRTCC();
+	CONFIG_TEST_SWITCH();
 
- 	if (SLEEP_INPUT) {
- 		_DOZE = 8; //chose divide by 32 
-   		while (SLEEP_INPUT) {
-    		_DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
-    		if (isCharReady()) {
-       			_DOZEN = 0;
-				outChar1('*');
-       			parseInput();  //satisfy the polling
-    		} 
-   		}
- 	}
+	outString1("Hello World\n");
+	WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
 
- 	//now sleep until next MCLR
- 	WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
- 	//disable UART2 to save power.
- 	U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
- 	U2STAbits.UTXEN = 0;                      //disable the transmitter
- 	while (1) {
-    	SLEEP();         //macro for asm("pwrsav #0")
- 	} 
+	if (!TEST_SWITCH) {
+		outString1("In test mode\n");
+		WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
+
+		while (1) {
+			SLEEP();
+		}
+	}
+	else {
+		__builtin_write_OSCCONL(OSCCON | 0x02);
+		DELAY_MS(50);
+		getDateFromUser();
+		setRTCC();
+	
+	 	if (SLEEP_INPUT) {
+	 		_DOZE = 8; //chose divide by 32 
+	   		while (SLEEP_INPUT) {
+	    		_DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
+	    		if (isCharReady()) {
+	       			_DOZEN = 0;
+					outChar1('*');
+	       			parseInput();  //satisfy the polling
+	    		} 
+	   		}
+	 	}
+
+	 	//now sleep until next MCLR
+	 	WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
+	 	//disable UART2 to save power.
+	 	U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
+	 	U2STAbits.UTXEN = 0;                      //disable the transmitter
+	 	while (1) {
+	    	SLEEP();         //macro for asm("pwrsav #0")
+	 	} 
+	}
  	return 0;
 }

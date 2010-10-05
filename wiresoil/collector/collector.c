@@ -4,15 +4,6 @@
 #include "snsl.h"
 #include "packet.h"
 
-#define SLEEP_INPUT _RB14
-
-/// Switch1 configuration
-inline void CONFIG_SLEEP_INPUT()  {
-  CONFIG_RB14_AS_DIG_INPUT();     //use RB14 for mode input
-  DISABLE_RB14_PULLUP();
-  DELAY_US(1);
-}
-
 uint8 isMeshUp(void) {
 	uint8 u8_c;
 
@@ -119,6 +110,22 @@ void sendEndPoll(void) {
 	outString(sz_data);
 }
 
+#define SLEEP_INPUT _RB14
+#define TEST_SWITCH _RB8
+
+/// Sleep Input pin configuration
+inline void CONFIG_SLEEP_INPUT()  {
+  CONFIG_RB14_AS_DIG_INPUT();     //use RB14 for mode input
+  DISABLE_RB14_PULLUP();
+  DELAY_US(1);
+}
+
+//Test Mode Switch pin configuration
+inline void CONFIG_TEST_SWITCH() {
+	CONFIG_RB8_AS_DIG_INPUT();
+	ENABLE_RB8_PULLUP();
+	DELAY_US(1);
+}
 
 int main(void) {
 	configClock();
@@ -128,6 +135,7 @@ int main(void) {
 	configUART1(DEFAULT_BAUDRATE); //uart1 >> debug output
 	
 	CONFIG_SLEEP_INPUT();
+	CONFIG_TEST_SWITCH();
 
 	outChar1('\n');
 
