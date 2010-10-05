@@ -15,10 +15,6 @@ int main(void)
 	//config SPI for VDIP1
 	VDIP_Init();
 
-	VDIP_Reset();
-
-	VDIP_Init();
-
 	//syncs VDIP with PIC
 	//VDIP_Sync();
 
@@ -63,7 +59,6 @@ int main(void)
     VDIP_Sync();
     */
 
-    /*
     VDIP_WriteFile("LOG1.TXT", "This is a test.");
     VDIP_WriteFile("LOG1.TXT", "This is a test.");
     VDIP_WriteFile("LOG1.TXT", "This is a test.");
@@ -77,7 +72,6 @@ int main(void)
     VDIP_WriteFile("LOG4.TXT", "Test sync.");
     
     VDIP_WriteFile("LOG1.TXT", "This is a test.");
-    */
     
     
     //VDIP_WriteFile("LOG2.TXT", "This is a test. A little bigger....");

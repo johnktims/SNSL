@@ -49,8 +49,6 @@ void sendStayAwake(void) {
 
 //packet format: 0x1E + packet length + address + 0x03 + message
 uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
-	uint8 u8_c;
-	uint8 u8_i = 0;
 
 	outChar1('P');
 	outChar1(':');
@@ -69,18 +67,42 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 	outChar(0x03);	//Appdata packet (forward data directly to PIC)
 	outChar(MONITOR_REQUEST_DATA_STATUS);
 
-	while (!isCharReady()) {
-	}
+    uint8 u8_c;
+	uint8 u8_i = 0;
+    // 44 characters
+    uint8 poll_data[] = "2w'12_node_testMDYHMS10tempData8redDatarVN";
+
+    outString1("Test Print:'");
+    outString1(poll_data);
+    outString1("'(End Test Print\n");
+	while (!isCharReady()){}
 	outChar1('G');
 	outChar1(':');
-	while (u8_i < 44) { // 19 - 24
-		while (!isCharReady()) {
-		}
+	//while (u8_i < strlen(poll_data)+5) { // 19 - 24
+    while (u8_i < 44) { // 19 - 24
+		while (!isCharReady()){}
+
+		// Get rid of the leading special characters
+		if (u8_i < 4)
+		{
+    		++u8_i;
+    		inChar();
+    		continue;
+        }
+
 		u8_c = inChar();
+		poll_data[u8_i] = u8_c;
 		outChar1(u8_c);
+
 		WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
-		u8_i++;
+		++u8_i;
 	}
+	poll_data[u8_i] = '\n';
+	outString1("\nPACKET:`");
+	outString1(poll_data);
+	outString1("`\n");
+
+    VDIP_WriteFile("DATA.TXT", poll_data);
 	outChar1('\n');
 	return 0x01;
 }
@@ -112,9 +134,9 @@ int main(void) {
 	//char data[2][3] = {{0x00, 0x32, 0x64},
 	//			       {0x00, 0x32, 0x77}};
 
-	uint8 u8_returnVal = 0x00;
+	//uint8 u8_returnVal = 0x00;
     uint32 u32_index = 0;
-    uint8 u8_index = 0;
+    //uint8 u8_index = 0;
 
 	if (SLEEP_INPUT) {
 		_DOZE = 8; //choose divide by 32

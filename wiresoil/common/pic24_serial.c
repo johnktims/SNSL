@@ -103,6 +103,25 @@ void outString(const char* psz_s) {
 }
 
 
+void outString1(const char* psz_s) {
+  while (*psz_s) {
+
+#if (SERIAL_EOL_DEFAULT==SERIAL_EOL_CR_LF)
+	if (*psz_s == '\n') outChar1(0x0D);
+    outChar1(*psz_s);    
+#endif
+#if (SERIAL_EOL_DEFAULT==SERIAL_EOL_CR)
+    if (*psz_s == '\n') outChar1(0x0D);
+    else outChar1(*psz_s);
+#endif
+#if (SERIAL_EOL_DEFAULT==SERIAL_EOL_LF)
+//no translation
+    outChar1(*psz_s);
+#endif
+    psz_s++;
+  }
+}
+
 
 
 static uint16 inStringInternal (char *psz_buff, uint16 u16_maxCount, uint8 echoFlag) {
@@ -156,6 +175,17 @@ void outUint8NoLeader(uint8 u8_x) {
   else outChar('0'+u8_c);
 }
 
+void outUint8NoLeader1(uint8 u8_x) {
+  uint8 u8_c;
+  u8_c = (u8_x>>4)& 0xf;
+  if (u8_c > 9) outChar1('A'+u8_c-10);
+  else outChar1('0'+u8_c);
+  //LSDigit
+  u8_c= u8_x & 0xf;
+  if (u8_c > 9) outChar1('A'+u8_c-10);
+  else outChar1('0'+u8_c);
+}
+
 /**
 Output u8_x as formatted hex value with leading "0x".
 \param u8_x value to output.
@@ -163,6 +193,11 @@ Output u8_x as formatted hex value with leading "0x".
 void outUint8(uint8 u8_x) {
   outString("0x");
   outUint8NoLeader(u8_x);
+}
+
+void outUint81(uint8 u8_x) {
+  outString1("0x");
+  outUint8NoLeader1(u8_x);
 }
 
 /**
