@@ -1,8 +1,17 @@
 #include "pic24_all.h"
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "snsl.h"
 #include "packet.h"
+
+uint8 blocking_inChar()
+{
+    // Wait for character
+    while(!isCharReady()){}
+    
+    return inChar();
+}    
 
 uint8 isMeshUp(void) {
 	uint8 u8_c;
@@ -60,35 +69,42 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 
     uint8 u8_c;
 	uint8 u8_i = 0;
-    // 44 characters
-    uint8 poll_data[] = "2w'12_node_testMDYHMS10tempData8redDatarVN";
 
-    outString1("Test Print:'");
-    outString1(poll_data);
-    outString1("'(End Test Print\n");
-	while (!isCharReady()){}
-	outChar1('G');
-	outChar1(':');
-	//while (u8_i < strlen(poll_data)+5) { // 19 - 24
-    while (u8_i < 44) { // 19 - 24
-		while (!isCharReady()){}
+    // Throw away the Start of Header
+    blocking_inChar();
+    
+    // Throw away the next three address bytes
+    blocking_inChar();
+    blocking_inChar();
+    blocking_inChar();
+    
+    // Store the size of the incoming payload
+    uint8 size = blocking_inChar();
+    
+    // Allocate memory for message + newline + null
+    uint8 *poll_data = (uint8*)malloc(sizeof(uint8)*(size+2));
+    poll_data[size]   = '\n';
+    poll_data[size+1] = 0x0;
 
-		// Get rid of the leading special characters
-		if (u8_i < 4)
-		{
-    		++u8_i;
-    		inChar();
-    		continue;
-        }
+    u8_i = 0;
+    while(u8_i < size)
+    {
+        poll_data[u8_i++] = blocking_inChar();
+    }
+    
+    /*
+    // Store the date strings
+    uint8 tm_day  = blocking_inChar(),
+          tm_mon  = blocking_inChar(),
+          tm_year = blocking_inChar(),
+          tm_hour = blocking_inChar(),
+          tm_min  = blocking_inChar(),
+          tm_sec  = blocking_inChar(),
+          test = snprintf(NULL, 0, "%d", tm_min);
+          
+    // Store the five temperature measurements
+    */
 
-		u8_c = inChar();
-		poll_data[u8_i] = u8_c;
-		outChar1(u8_c);
-
-		WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
-		++u8_i;
-	}
-	poll_data[u8_i] = '\n';
 	outString1("\nPACKET:`");
 	outString1(poll_data);
 	outString1("`\n");
