@@ -94,11 +94,14 @@
 
 uint8 inChar(void);  //blocking single character input
 void outString(const char* psz_s);
+void outString1(const char* psz_s);
 uint16 inString (char *psz_buff, int16 u16_maxCount);
 uint16 inStringEcho (char *psz_buff, int16 u16_maxCount);
 void outChar(uint8 u8_c);
+void outChar1(uint8 u8_c);
 void outUint8NoLeader (uint8 u8_x);
 void outUint8 (uint8 u8_x);
+void outUint81(uint8 u8_x);
 void outUint16(uint16 u16_x);
 void outUint32(uint32 u32_x);
 void outUint8Decimal(uint8 u8_x);
