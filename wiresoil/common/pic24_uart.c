@@ -178,7 +178,7 @@ uint8 isCharReady1(void) {
 */
 uint8 inChar1(void) {
   while (u16_rxFifo1Head == u16_rxFifo1Tail)
-    doHeartbeat();
+    //doHeartbeat();
   u16_rxFifo1Tail++;
   if (u16_rxFifo1Tail == UART1_RX_FIFO_SIZE) u16_rxFifo1Tail=0; //wrap
   return au8_rxFifo1[u16_rxFifo1Tail];  //return the character

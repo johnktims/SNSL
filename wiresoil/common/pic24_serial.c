@@ -142,6 +142,23 @@ static uint16 inStringInternal (char *psz_buff, uint16 u16_maxCount, uint8 echoF
   return(u16_i);
 }
 
+static uint16 inStringInternal1 (char *psz_buff, uint16 u16_maxCount, uint8 echoFlag) {
+	uint8 u8_c;
+	uint16 u16_i;
+
+	if (!u16_maxCount) return 0;
+	u16_i = 0;
+	for (u16_i = 0; u16_i < u16_maxCount; u16_i++) {
+		if (echoFlag) u8_c = inCharEcho1();
+		else u8_c = inChar1();
+		if (u8_c == '\n' || u8_c == '\r') break;
+		*psz_buff = u8_c;
+		psz_buff++;
+	}
+	*psz_buff = 0;
+	return(u16_i);
+}
+
 /**
 Reads a string into psz_buff, assumes psz_buff can
 hold at least u16_maxCount+1 characters. String reading
@@ -161,6 +178,10 @@ Same as inString(), except echoes characters to console as they are read.
 */
 uint16 inStringEcho (char *psz_buff, int16 u16_maxCount) {
   return inStringInternal(psz_buff,u16_maxCount,1);
+}
+
+uint16 inStringEcho1 (char *psz_buff, int16 u16_maxCount) {
+	return inStringInternal1(psz_buff, u16_maxCount, 1);
 }
 
 
@@ -212,6 +233,16 @@ void outUint16(uint16 u16_x) {
   outUint8NoLeader(u8_c);
   u8_c = (uint8) u16_x;
   outUint8NoLeader(u8_c);
+}
+
+void outUint161(uint16 u16_x) {
+	uint8 u8_c;
+
+	outString1("0x");
+	u8_c = (u16_x >> 8);
+	outUint8NoLeader1(u8_c);
+	u8_c = (uint8) u16_x;
+	outUint8NoLeader(u8_c);
 }
 
 /**
@@ -338,6 +369,13 @@ uint8 inCharEcho(void) {
   u8_c = inChar(); //get character
   outChar(u8_c);   //echo
   return u8_c;
+}
+
+uint8 inCharEcho1(void) {
+	uint8 u8_c;
+	u8_c = inChar1();
+	outChar1(u8_c);
+	return u8_c;
 }
 
 /** Determine if a character is ready to be read

@@ -17,6 +17,20 @@ typedef union _unionRTCC {
 
 unionRTCC u_RTCC;
 
+uint8 getBCDvalue(char *sz_1) {
+	char sz_buff[8];
+	uint16 u16_bin;
+	uint8 u8_bcd;
+	outString1(sz_1);
+	inStringEcho1(sz_buff, 7);
+	sscanf(sz_buff, "%d", (int *)&u16_bin);
+	u8_bcd = u16_bin/10;
+	u8_bcd = u8_bcd << 4;
+	u8_bcd = u8_bcd | (u16_bin % 10);
+	outChar1('\n');
+	return(u8_bcd);
+}
+
 uint8 parseVal(char *sz_1) {
 	uint16 u16_bin;
 	uint8 u8_bcd;
@@ -27,15 +41,7 @@ uint8 parseVal(char *sz_1) {
 	return(u8_bcd);
 }
 
-void getDateFromUser(void) {
-	/*u_RTCC.u8.yr = getBCDvalue("Enter year (0-99): ");
-	u_RTCC.u8.month = getBCDvalue("Enter month (1-12): ");
-	u_RTCC.u8.date = getBCDvalue("Enter day of month (1-31): ");
-	u_RTCC.u8.wday = getBCDvalue("Enter week day (0-6): ");
-	u_RTCC.u8.hour = getBCDvalue("Enter hour (0-23): ");
-	u_RTCC.u8.min = getBCDvalue("Enter min (0-59): ");
-	u_RTCC.u8.sec = getBCDvalue("Enter sec(0-59): ");*/
-
+void setRTCCVals(void) {
 	u_RTCC.u8.yr = parseVal("90");
 	u_RTCC.u8.month = parseVal("10");
 	u_RTCC.u8.date = parseVal("5");
@@ -43,6 +49,16 @@ void getDateFromUser(void) {
 	u_RTCC.u8.hour = parseVal("10");
 	u_RTCC.u8.min = parseVal("10");
 	u_RTCC.u8.sec = parseVal("0");
+}
+
+void getDateFromUser(void) {
+	u_RTCC.u8.yr = getBCDvalue("Enter year (0-99): ");
+	u_RTCC.u8.month = getBCDvalue("Enter month (1-12): ");
+	u_RTCC.u8.date = getBCDvalue("Enter day of month (1-31): ");
+	u_RTCC.u8.wday = getBCDvalue("Enter week day (0-6): ");
+	u_RTCC.u8.hour = getBCDvalue("Enter hour (0-23): ");
+	u_RTCC.u8.min = getBCDvalue("Enter min (0-59): ");
+	u_RTCC.u8.sec = getBCDvalue("Enter sec(0-59): ");
 }
 
 void setRTCC(void) {
@@ -67,15 +83,6 @@ void parseInput(void){
    	u8_c = inChar();
    	outChar1(u8_c);
    	if (u8_c != MONITOR_REQUEST_DATA_STATUS) return;  
-
-/*	SendPacketHeader();
-	outChar(6);
-	outChar(APP_SMALL_DATA);
-	outChar(0xB2);
-	outChar(0xB3);
-	outChar(0xB4);
-	outChar(0xB5);
-	outChar(0xB6);*/
 
 	while (!RCFGCALbits.RTCSYNC) {
 	}
@@ -126,23 +133,48 @@ int main(void) {
 	CONFIG_SLEEP_INPUT();
 	CONFIG_TEST_SWITCH();
 
-	//_PERSISTENT
-
-	//outString1("Hello World\n");
-	//WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
+	__builtin_write_OSCCONL(OSCCON | 0x02);
 
 	if (!TEST_SWITCH) {
-		outString1("In test mode\n");
-		WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
+		uint8 u8_menuIn;
 
+		/*outString1("In test mode\n");
+		WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();*/
+
+		outString1("Setup Mode:\n\n");
+		outString1("Choose an option -\n\n");
+		outString1("1. Configure Clock\n");
+		outString1("2. Set Node Name\n");
+		outString1("--> ");
+		u8_menuIn = inCharEcho1();
+		DELAY_MS(100);
+		
+		if (u8_menuIn == '1') {
+			outChar1('\n');
+			getDateFromUser();
+			//setRTCCVals();
+			outString1("\n\nInitializing clock....");
+			setRTCC();
+			outString1("\nTesting clock (press any key to end):\n");
+			while (1) {
+				if (RCFGCALbits.RTCSYNC) {
+					readRTCC();
+					char buff[8];
+					sprintf(buff, "%2x\n", u_RTCC.u8.sec);
+					outString1(buff);
+					DELAY_MS(700);
+					/*uint16 tmp = (uint16) u_RTCC.u8.sec;
+					outUint161(tmp);*/
+				}
+			}
+		}
+		
 		while (1) {
 			SLEEP();
 		}
 	}
 	else {
-		__builtin_write_OSCCONL(OSCCON | 0x02);
-		DELAY_MS(50);
-		getDateFromUser();
+		setRTCCVals();
 		setRTCC();
 	
 	 	if (SLEEP_INPUT) {
