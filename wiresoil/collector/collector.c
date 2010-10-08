@@ -9,29 +9,21 @@ uint8 blocking_inChar()
 {
     // Wait for character
     while(!isCharReady()){}
-    
     return inChar();
 }    
 
 uint8 isMeshUp(void) {
-	uint8 u8_c;
-
-	u8_c = inChar();
+	uint8 u8_c = inChar();
 	if (u8_c == 0x04) {
-		while (!isCharReady()) {
+		u8_c = blocking_inChar();
+		if (u8_c == 0x1) {
+			u8_c = inChar();
+			u8_c = inChar();
+			u8_c = inChar();
+			return 0x0;
 		}
-		u8_c = inChar();
-		if (u8_c == 0x01) {
-			u8_c = inChar();
-			u8_c = inChar();
-			u8_c = inChar();
-			return 0x01;
-		}
-		return 0x00;
 	}
-	else {
-		return 0x00;
-	}
+	return 0x0;
 }
 
 //format: 0x1E + length + groupID LSB + grpID MSB + TTL + 0x02 + 'sleepyNodeFalse'
@@ -111,12 +103,6 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 	}
 
 	for (tmp = 0; tmp < packet_length - 1; tmp++) {
-		/*if (isCharReady()) {
-			//outUint81(inChar());
-			//u8_c = inChar();
-			poll_data[tmp] = inChar();
-			tmp++;
-		}*/
 		poll_data[tmp] = blocking_inChar();
 	}
 	outString1("PACKET:`");
@@ -130,6 +116,23 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 	{
 		outChar1(poll_data[tmp]);
 	}
+
+    uint8 psz_fmt[] = "%02X%02X%02X,"                   // node address
+                      "%c%c%c%c%c%c%c%c%c%c%c%c%c%c,"   // node name
+                      "%02x/%02x/%02x %02x:%02x:%02x,"  // timestamp
+                      "%c%c%c%c%c%c%c%c%c%c,"           // temp samples
+                      "%c%c%c%c%c%c%c%c,"               // redox samples
+                      "%c%c\n";                         // ref voltage
+
+    uint8* p = poll_data;
+    uint8 psz_out[50];
+    sprintf(psz_out, psz_fmt,
+        c_ad1, c_ad2, c_ad2,
+        p[26],p[27],p[28],p[29],p[30],p[31],p[32],p[33],p[34],p[35],p[36],p[37],p[38],p[39],
+        p[0],p[1],p[2],p[3],p[4],p[5],
+        p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],
+        p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23],
+        p[24],p[25]);
 
 	VDIP_WriteFile("DATA.TXT", poll_data);
     
@@ -213,7 +216,6 @@ int main(void) {
 				if (isMeshUp() == 0x01) {
 					sendStayAwake();
 					WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
-
 
 					//DELAY_MS(20000);
 					//doPoll('\x00', '\x32', '\x64');
