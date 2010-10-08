@@ -1,6 +1,9 @@
 #include "pic24_all.h"
 #include "packet.h"
 
+#define SLEEP_INPUT _RB14
+#define TEST_SWITCH _RB8
+
 typedef union _unionRTCC {
 	struct { //four 16 bit registers
 				uint8 yr;
@@ -14,6 +17,28 @@ typedef union _unionRTCC {
 	}u8;
 	uint16 regs[4];
 }unionRTCC;
+
+void _ISRFAST _INT1Interrupt (void) {
+ 	U2MODEbits.UARTEN = 1;                    // enable UART RX/TX
+ 	U2STAbits.UTXEN = 1;                      //enable the transmitter
+
+	outString1("in interrupt\n");
+	if (SLEEP_INPUT) {
+		_DOZE = 8; //chose divide by 32 
+		while (SLEEP_INPUT) {
+			_DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
+			if (isCharReady()) {
+				_DOZEN = 0;
+				outChar1('*');
+				parseInput();  //satisfy the polling
+			} 
+		}
+	}
+
+	U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
+	U2STAbits.UTXEN = 0;                      //disable the transmitter
+	_INT1IF = 0;		//clear interrupt flag before exiting
+}
 
 unionRTCC u_RTCC;
 
@@ -104,9 +129,6 @@ void parseInput(void){
 	outString("12_node_test");
 }
 
-#define SLEEP_INPUT _RB14
-#define TEST_SWITCH _RB8
-
 /// Sleep Input pin configuration
 inline void CONFIG_SLEEP_INPUT()  {
 	CONFIG_RB14_AS_DIG_INPUT();     //use RB14 for mode input
@@ -133,7 +155,12 @@ int main(void) {
 	CONFIG_SLEEP_INPUT();
 	CONFIG_TEST_SWITCH();
 
+	CONFIG_INT1_TO_RP(14);
+
 	__builtin_write_OSCCONL(OSCCON | 0x02);
+
+	setRTCCVals();
+	setRTCC();
 
 	if (!TEST_SWITCH) {
 		uint8 u8_menuIn;
@@ -174,21 +201,15 @@ int main(void) {
 		}
 	}
 	else {
-		setRTCCVals();
-		setRTCC();
-	
-	 	if (SLEEP_INPUT) {
-	 		_DOZE = 8; //chose divide by 32 
-	   		while (SLEEP_INPUT) {
-	    		_DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
-	    		if (isCharReady()) {
-	       			_DOZEN = 0;
-					outChar1('*');
-	       			parseInput();  //satisfy the polling
-	    		} 
-	   		}
-	 	}
+		DELAY_MS(500);
 
+		_INT1IF = 0;		//clear interrupt flag
+		_INT1IP = 2;		//set interrupt priority
+		_INT1EP = 0;		//set rising edge (positive) trigger 
+		_INT1IE = 1;		//enable the interrupt
+
+		outString1("Waiting for interrupt\n");
+		WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
 	 	//now sleep until next MCLR
 	 	WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
 	 	//disable UART2 to save power.
