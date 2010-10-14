@@ -13,7 +13,7 @@
 /***********************************************************
  * Macro Definitions
  **********************************************************/
-
+#define DEBUG 0
 // Is this a DEBUG build?
 #ifndef DEBUG
 #define DEBUG 0
@@ -22,7 +22,7 @@
 // Print output if this is a DEBUG build
 #if DEBUG
 #define DEBUG_OUT(msg) \
-    (puts("`"msg"`"))
+    /*(puts("`"msg"`"))*/
 #else
 #define DEBUG_OUT(msg)
 #endif
@@ -89,7 +89,7 @@ uint8 VDIP_Sync(void)
 	while (c != 'E')
     {
         c = SPI_ReadWait();
-        putchar(c);
+        //putchar(c);
     }
 
     DEBUG_OUT("VDIP_Sync: Finished.");

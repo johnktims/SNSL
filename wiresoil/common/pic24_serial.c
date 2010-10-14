@@ -103,20 +103,20 @@ void outString(const char* psz_s) {
 }
 
 
-void outString1(const char* psz_s) {
+void outString2(const char* psz_s) {
   while (*psz_s) {
 
 #if (SERIAL_EOL_DEFAULT==SERIAL_EOL_CR_LF)
-	if (*psz_s == '\n') outChar1(0x0D);
-    outChar1(*psz_s);    
+	if (*psz_s == '\n') outChar2(0x0D);
+    outChar2(*psz_s);    
 #endif
 #if (SERIAL_EOL_DEFAULT==SERIAL_EOL_CR)
-    if (*psz_s == '\n') outChar1(0x0D);
-    else outChar1(*psz_s);
+    if (*psz_s == '\n') outChar2(0x0D);
+    else outChar2(*psz_s);
 #endif
 #if (SERIAL_EOL_DEFAULT==SERIAL_EOL_LF)
 //no translation
-    outChar1(*psz_s);
+    outChar2(*psz_s);
 #endif
     psz_s++;
   }
@@ -196,15 +196,15 @@ void outUint8NoLeader(uint8 u8_x) {
   else outChar('0'+u8_c);
 }
 
-void outUint8NoLeader1(uint8 u8_x) {
+void outUint8NoLeader2(uint8 u8_x) {
   uint8 u8_c;
   u8_c = (u8_x>>4)& 0xf;
-  if (u8_c > 9) outChar1('A'+u8_c-10);
-  else outChar1('0'+u8_c);
+  if (u8_c > 9) outChar2('A'+u8_c-10);
+  else outChar2('0'+u8_c);
   //LSDigit
   u8_c= u8_x & 0xf;
-  if (u8_c > 9) outChar1('A'+u8_c-10);
-  else outChar1('0'+u8_c);
+  if (u8_c > 9) outChar2('A'+u8_c-10);
+  else outChar2('0'+u8_c);
 }
 
 /**
@@ -216,9 +216,9 @@ void outUint8(uint8 u8_x) {
   outUint8NoLeader(u8_x);
 }
 
-void outUint81(uint8 u8_x) {
-  outString1("0x");
-  outUint8NoLeader1(u8_x);
+void outUint82(uint8 u8_x) {
+  outString2("0x");
+  outUint8NoLeader2(u8_x);
 }
 
 /**
@@ -238,9 +238,9 @@ void outUint16(uint16 u16_x) {
 void outUint161(uint16 u16_x) {
 	uint8 u8_c;
 
-	outString1("0x");
+	outString2("0x");
 	u8_c = (u16_x >> 8);
-	outUint8NoLeader1(u8_c);
+	outUint8NoLeader2(u8_c);
 	u8_c = (uint8) u16_x;
 	outUint8NoLeader(u8_c);
 }

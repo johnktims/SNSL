@@ -5,18 +5,18 @@
 uint8 blocking_inChar()
 {
     // Wait for character
-    while(!isCharReady()){}
-    return inChar();
+    while(!isCharReady2()){}
+    return inChar2();
 }
 
 uint8 isMeshUp(void) {
-	uint8 u8_c = inChar();
+	uint8 u8_c = inChar2();
 	if (u8_c == 0x04) {
-		u8_c = inChar();
+		u8_c = inChar2();
 		if (u8_c == 0x1) {
-			u8_c = inChar();
-			u8_c = inChar();
-			u8_c = inChar();
+			u8_c = inChar2();
+			u8_c = inChar2();
+			u8_c = inChar2();
 			return 0x01;
 		}
 	}
@@ -28,34 +28,33 @@ void sendStayAwake(void) {
 	const char sz_data[] = "sleepyModeFalse";
 
 	SendPacketHeader(); //0x1E
-	outChar(0x10);	//packet length = 1 + string length
-	outChar(0x01);	//LSB of group ID is 0001
-	outChar(0x00);  //MSB of group ID
-	outChar(0x05);	//TTL
-	outChar(0x02);  //MRPC packet type
-	outString(sz_data);
+	outChar2(0x10);	//packet length = 1 + string length
+	outChar2(0x01);	//LSB of group ID is 0001
+	outChar2(0x00);  //MSB of group ID
+	outChar2(0x05);	//TTL
+	outChar2(0x02);  //MRPC packet type
+	outString2(sz_data);
 }
 
 //packet format: 0x1E + packet length + address + 0x03 + message
 uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 
-	outChar1('P');
-	outChar1(':');
-	outChar1(c_ad1);
-	outChar1(',');
-	outChar1(c_ad2);
-	outChar1(',');
-	outChar1(c_ad3);
-	outChar1('\n');
-
-	//SendPacketHeader();
-	outChar(0x1E);
-	outChar(0x02);		//packet length
+	outChar('P');
+	outChar(':');
 	outChar(c_ad1);
+	outChar(',');
 	outChar(c_ad2);
+	outChar(',');
 	outChar(c_ad3);
-	outChar(0x03);	//Appdata packet (forward data directly to PIC)
-	outChar(MONITOR_REQUEST_DATA_STATUS);
+	outChar('\n');
+
+	SendPacketHeader();
+	outChar2(0x02);		//packet length
+	outChar2(c_ad1);
+	outChar2(c_ad2);
+	outChar2(c_ad3);
+	outChar2(0x03);	//Appdata packet (forward data directly to PIC)
+	outChar2(MONITOR_REQUEST_DATA_STATUS);
 
 	WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
 
@@ -65,21 +64,22 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 
 	uint8 tmp = 0;
 	uint8 packet_length = 0;
-	for(tmp = 0; tmp < 6; tmp++) {
+	for(tmp = 0; tmp < 6; tmp++)
+	{
 		if (tmp == 4) packet_length = blocking_inChar();
 		else blocking_inChar();
 	}
 
-	for (tmp = 0; tmp < packet_length - 1; tmp++) {
+	for(tmp = 0; tmp < packet_length - 1; tmp++) {
 		poll_data[tmp] = blocking_inChar();
 	}
-	outString1("PACKET:`");
+	outString("PACKET:`");
 	tmp = 0;
 	for(tmp = 0; tmp < 39; tmp++)
 	{
-		outUint81(poll_data[tmp]);
+		outUint82(poll_data[tmp]);
 	}
-	outString1("`\n");
+	outString("`\n");
 	for(tmp = 0; tmp < 39; tmp++)
 	{
 		outChar1(poll_data[tmp]);
@@ -105,27 +105,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 	psz_out[69] = 0x0;
 
 	VDIP_WriteFile("DATA.TXT", psz_out);
-    
-    /*
-    // Store the date strings
-    uint8 tm_day  = blocking_inChar(),
-          tm_mon  = blocking_inChar(),
-          tm_year = blocking_inChar(),
-          tm_hour = blocking_inChar(),
-          tm_min  = blocking_inChar(),
-          tm_sec  = blocking_inChar(),
-          test = snprintf(NULL, 0, "%d", tm_min);
-          
-    // Store the five temperature measurements
-    */
 
-	outString1("\nPACKET:`");
-	//outString1(poll_data);
-	outString1("`\n");
-
-   // VDIP_WriteFile("DATA.TXT", poll_data);
-	outChar1('\n');
-	//free(poll_data);
 	return 0x01;
 }
 
@@ -133,12 +113,12 @@ void sendEndPoll(void) {
 	const char sz_data[] = "pollingStopped";
 
 	SendPacketHeader(); //0x1E
-	outChar(0x0F);	//packet length
-	outChar(0x01);
-	outChar(0x00);
-	outChar(0x05);	//TTL
-	outChar(0x02);	//MRPC packet type
-	outString(sz_data);
+	outChar2(0x0F);	//packet length
+	outChar2(0x01);
+	outChar2(0x00);
+	outChar2(0x05);	//TTL
+	outChar2(0x02);	//MRPC packet type
+	outString2(sz_data);
 }
 
 #define SLEEP_INPUT _RB14
@@ -171,10 +151,11 @@ void _ISRFAST _INT1Interrupt(void) {
 	_LATB7 = 0;		//enable power to VDIP
 
 	while (SLEEP_INPUT) {
-		if (isCharReady()) {
+		if (isCharReady2()) {
 			if (isMeshUp() == 0x01) {
 				sendStayAwake();
 				WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
+
 
 				VDIP_Init();
 				char **data = SNSL_ParseNodeNames();
@@ -202,7 +183,7 @@ void _ISRFAST _INT1Interrupt(void) {
 int main(void) {
 	configClock();
 	configDefaultUART(DEFAULT_BAUDRATE);
-	configUART1(DEFAULT_BAUDRATE);
+	configUART2(DEFAULT_BAUDRATE);
 
 	CONFIG_SLEEP_INPUT();
 	CONFIG_TEST_SWITCH();
@@ -210,20 +191,18 @@ int main(void) {
 
 	CONFIG_INT1_TO_RP(14);
 
-	U2MODEbits.UARTEN = 1;
-	U2STAbits.UTXEN = 1;
-
 	if (!TEST_SWITCH) {
 	}
 	else {
 		DELAY_MS(500);		//wait for SLEEP_INPUT to stabilize before attaching interrupt
-
+	
 		_INT1IF = 0;		//clear interrupt flag
 		_INT1IP = 2;		//set interrupt priority
 		_INT1EP = 0;		//set rising edge (positive) trigger 
 		_INT1IE = 1;		//enable the interrupt
 
-		_LATB7 = 1;					//cut power to VDIP
+		_LATB7 = 1;					//cut power to VDIP*/
+		_LATB7 = 0;
 
 		while (1) {
 			SLEEP();

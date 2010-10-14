@@ -11,7 +11,7 @@ void WriteBuffer(char * ptrData, unsigned int Size) {
 
 void SendPacketHeader(void) {
  
-  outChar(PACKET_START);
+  outChar2(PACKET_START);
 }
 
 void sendPacketChar(char b) {
