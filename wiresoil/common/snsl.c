@@ -140,16 +140,9 @@ void doRead(UFDATA* p_ufdata) {
  * @return char* The node's name
  */
 //**********************************************************
-char* SNSL_GetNodeName(void)
+void SNSL_GetNodeName(UFDATA *fdata)
 {
-    //char *name = (char*)malloc(sizeof(char)*MAX_NODE_NAME_LEN);
-    UFDATA fdata;
-    doRead(&fdata);
-    //doInsert(&fdata, name);
-    //printf("\nfdata:`%s`;name:`%s`\n", fdata.dat.node_name, name);
-    //return name;
-    printf("\nWithin GetNodeName: `%s`\n", fdata.dat.node_name);
-    return "test";
+    doRead(fdata);
 }
 
 //**********************************************************
@@ -163,4 +156,12 @@ void SNSL_SetNodeName(char *node_name)
     UFDATA fdata;
     doInsert(&fdata, node_name);
     doCommit(&fdata);  //write the data
+}
+
+void SNSL_PrintNodeName()
+{
+	UFDATA fdata;
+	doRead(&fdata);
+
+	outString(fdata.dat.node_name);
 }

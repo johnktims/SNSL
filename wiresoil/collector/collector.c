@@ -77,17 +77,19 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 	tmp = 0;
 	for(tmp = 0; tmp < 39; tmp++)
 	{
-		outUint82(poll_data[tmp]);
+		outUint8(poll_data[tmp]);
+		outChar(' ');
 	}
 	outString("`\n");
 	for(tmp = 0; tmp < 39; tmp++)
 	{
-		outChar1(poll_data[tmp]);
+		outChar(poll_data[tmp]);
 	}
 
+
     uint8 psz_fmt[] = "%02X%02X%02X,"                   // node address
-                      "%c%c%c%c%c%c%c%c%c%c%c%c%c%c,"   // node name
-                      "%02x/%02x/%02x %02x:%02x:%02x,"  // timestamp
+                      "%c%c%c%c%c%c%c%c%c%c%c%c,"   	// node name
+                      "%02x/%02x/%02x %02x:%02x:%02x,"  // timestamp [MM/DD/YY HH:MM:SS]
                       "%c%c%c%c%c%c%c%c%c%c,"           // temp samples
                       "%c%c%c%c%c%c%c%c,"               // redox samples
                       "%c%c\n";                         // ref voltage

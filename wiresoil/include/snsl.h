@@ -29,7 +29,8 @@ typedef union _UFDATA{
 
 // Functions
 char** SNSL_ParseNodeNames(void);
-char*  SNSL_GetNodeName(void);
+void   SNSL_GetNodeName(UFDATA *);
 void   SNSL_SetNodeName(char *);
+void   SNSL_PrintNodeName(void);
 
 #endif // SNSL_H

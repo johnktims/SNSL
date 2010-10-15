@@ -1,5 +1,7 @@
 #include "pic24_all.h"
 #include "packet.h"
+#include "snsl.h"
+#include <string.h>
 
 #define SLEEP_INPUT _RB14
 #define TEST_SWITCH _RB8
@@ -22,14 +24,12 @@ void _ISRFAST _INT1Interrupt (void) {
  	U2MODEbits.UARTEN = 1;                    // enable UART RX/TX
  	U2STAbits.UTXEN = 1;                      //enable the transmitter
 
-	outString1("in interrupt\n");
 	if (SLEEP_INPUT) {
 		_DOZE = 8; //chose divide by 32 
 		while (SLEEP_INPUT) {
 			_DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
-			if (isCharReady()) {
+			if (isCharReady2()) {
 				_DOZEN = 0;
-				outChar1('*');
 				parseInput();  //satisfy the polling
 			} 
 		}
@@ -46,8 +46,8 @@ uint8 getBCDvalue(char *sz_1) {
 	char sz_buff[8];
 	uint16 u16_bin;
 	uint8 u8_bcd;
-	outString1(sz_1);
-	inStringEcho1(sz_buff, 7);
+	outString(sz_1);
+	inStringEcho(sz_buff, 7);
 	sscanf(sz_buff, "%d", (int *)&u16_bin);
 	u8_bcd = u16_bin/10;
 	u8_bcd = u8_bcd << 4;
@@ -104,9 +104,10 @@ void readRTCC(void) {
 
 void parseInput(void){
 	uint8 u8_c;
+	UFDATA fdata;
+	SNSL_GetNodeName(&fdata);
   
-   	u8_c = inChar();
-   	outChar1(u8_c);
+   	u8_c = inChar2();
    	if (u8_c != MONITOR_REQUEST_DATA_STATUS) return;  
 
 	while (!RCFGCALbits.RTCSYNC) {
@@ -114,19 +115,20 @@ void parseInput(void){
 	readRTCC();
 
 	SendPacketHeader();
-	outChar(39);
-	outChar(APP_SMALL_DATA);
+	outChar2(27+strlen(fdata.dat.node_name));
+	outChar2(APP_SMALL_DATA);
 	//outString("MDYHMS");
-	outChar(u_RTCC.u8.month);
-	outChar(u_RTCC.u8.date);
-	outChar(u_RTCC.u8.yr);
-	outChar(u_RTCC.u8.hour);
-	outChar(u_RTCC.u8.min);
-	outChar(u_RTCC.u8.sec);
-	outString("10tempData");
-	outString("8redData");
-	outString("rV");
-	outString("12_node_test");
+	outChar2(u_RTCC.u8.month);
+	outChar2(u_RTCC.u8.date);
+	outChar2(u_RTCC.u8.yr);
+	outChar2(u_RTCC.u8.hour);
+	outChar2(u_RTCC.u8.min);
+	outChar2(u_RTCC.u8.sec);
+	outString2("10tempData");
+	outString2("8redData");
+	outString2("rV");
+	outString2(fdata.dat.node_name);
+	//outString2("12_node_test");
 }
 
 /// Sleep Input pin configuration
@@ -146,7 +148,7 @@ inline void CONFIG_TEST_SWITCH() {
 int main(void) {
   	configClock();
   	configDefaultUART(DEFAULT_BAUDRATE); //this is UART2
-	configUART1(DEFAULT_BAUDRATE);
+	configUART2(DEFAULT_BAUDRATE);
 
 	if (_POR) {
 		_POR = 0;    //clear POR bit, init any persistent variables
@@ -165,35 +167,45 @@ int main(void) {
 	if (!TEST_SWITCH) {
 		uint8 u8_menuIn;
 
-		/*outString1("In test mode\n");
-		WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();*/
-
-		outString1("Setup Mode:\n\n");
-		outString1("Choose an option -\n\n");
-		outString1("1. Configure Clock\n");
-		outString1("2. Set Node Name\n");
-		outString1("--> ");
-		u8_menuIn = inCharEcho1();
+		outString("Setup Mode:\n\n");
+		outString("Choose an option -\n\n");
+		outString("1. Configure Clock\n");
+		outString("2. Set Node Name\n");
+		outString("--> ");
+		u8_menuIn = inChar();
 		DELAY_MS(100);
 		
 		if (u8_menuIn == '1') {
-			outChar1('\n');
 			getDateFromUser();
 			//setRTCCVals();
-			outString1("\n\nInitializing clock....");
+			outString("\n\nInitializing clock....");
 			setRTCC();
-			outString1("\nTesting clock (press any key to end):\n");
+			outString("\nTesting clock (press any key to end):\n");
 			while (1) {
 				if (RCFGCALbits.RTCSYNC) {
 					readRTCC();
 					char buff[8];
 					sprintf(buff, "%2x\n", u_RTCC.u8.sec);
-					outString1(buff);
+					outString(buff);
 					DELAY_MS(700);
 					/*uint16 tmp = (uint16) u_RTCC.u8.sec;
 					outUint161(tmp);*/
 				}
 			}
+		}
+
+		if (u8_menuIn == '2') {
+			outString("\nCurrent node name: ");
+			SNSL_PrintNodeName();
+			outString("\n\nEnter new node name [maximum 12 characters]: ");
+			char name_buff[13];
+			inStringEcho(name_buff, 12);
+			outString("\n\nSaving new node name........");
+			SNSL_SetNodeName(name_buff);
+			outString("\nNew node name: ");
+			SNSL_PrintNodeName();
+			//outString(name_buff);
+			WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
 		}
 		
 		while (1) {
@@ -208,7 +220,6 @@ int main(void) {
 		_INT1EP = 0;		//set rising edge (positive) trigger 
 		_INT1IE = 1;		//enable the interrupt
 
-		outString1("Waiting for interrupt\n");
 		WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
 	 	//now sleep until next MCLR
 	 	WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();

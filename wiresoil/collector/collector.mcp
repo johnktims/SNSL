@@ -36,6 +36,7 @@ file_008=.
 file_009=.
 file_010=.
 file_011=.
+file_012=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -49,6 +50,7 @@ file_008=no
 file_009=no
 file_010=no
 file_011=no
+file_012=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -62,6 +64,7 @@ file_008=no
 file_009=no
 file_010=no
 file_011=no
+file_012=no
 [FILE_INFO]
 file_000=..\common\pic24_clockfreq.c
 file_001=..\common\pic24_configbits.c
@@ -74,7 +77,8 @@ file_007=collector.c
 file_008=..\common\snsl.c
 file_009=..\common\vdip.c
 file_010=..\common\spi.c
-file_011=..\include\vdip.h
+file_011=C:\Users\Turner\Desktop\wiresoil\common\pic24_flash.c
+file_012=..\include\vdip.h
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}
 suite_state=
