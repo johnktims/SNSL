@@ -59,20 +59,27 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 	WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
 
 	uint8 poll_data[40];
-	poll_data[38] = '\n';
-	poll_data[39] = '\0';
+	uint8 i = 0;
+	for (i = 0; i<40; i++) {
+		poll_data[i] = 0x00;
+	}
+	//poll_data[38] = '\n';
+	//poll_data[39] = '\0';
 
 	uint8 tmp = 0;
 	uint8 packet_length = 0;
 	for(tmp = 0; tmp < 6; tmp++)
 	{
-		if (tmp == 4) packet_length = blocking_inChar();
+		if (tmp == 4) packet_length = blocking_inChar() - 1;
 		else blocking_inChar();
 	}
 
-	for(tmp = 0; tmp < packet_length - 1; tmp++) {
+	for(tmp = 0; tmp < packet_length; tmp++) {
 		poll_data[tmp] = blocking_inChar();
 	}
+	
+	poll_data[packet_length] = '\0';
+	
 	outString("PACKET:`");
 	tmp = 0;
 	for(tmp = 0; tmp < 39; tmp++)
@@ -86,9 +93,18 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 		outChar(poll_data[tmp]);
 	}
 
+	//uint8 *pui_node_name = &poll_data[26];
+	uint8 psz_node_name[MAX_NODE_NAME_LEN];
+	for(i = 26; i < packet_length; ++i)
+	{
+		psz_node_name[i-26] = poll_data[i];
+	}
+	psz_node_name[i-26] = 0x0;
+	
 
     uint8 psz_fmt[] = "%02X%02X%02X,"                   // node address
-                      "%c%c%c%c%c%c%c%c%c%c%c%c,"   	// node name
+                      /*"%c%c%c%c%c%c%c%c%c%c%c%c,"   	// node name*/
+					  "%s,"
                       "%02x/%02x/%02x %02x:%02x:%02x,"  // timestamp [MM/DD/YY HH:MM:SS]
                       "%c%c%c%c%c%c%c%c%c%c,"           // temp samples
                       "%c%c%c%c%c%c%c%c,"               // redox samples
@@ -98,7 +114,8 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
     uint8 psz_out[70];
     sprintf(psz_out, psz_fmt,
         c_ad1, c_ad2, c_ad3,
-        p[26],p[27],p[28],p[29],p[30],p[31],p[32],p[33],p[34],p[35],p[36],p[37],
+        /*p[26],p[27],p[28],p[29],p[30],p[31],p[32],p[33],p[34],p[35],p[36],p[37],*/
+		psz_node_name,
         p[0],p[1],p[2],p[3],p[4],p[5],
         p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],
         p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23],
@@ -106,7 +123,11 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 
 	psz_out[69] = 0x0;
 
+	outString(psz_out);
+
 	VDIP_WriteFile("DATA.TXT", psz_out);
+
+	outChar('\n');
 
 	return 0x01;
 }
