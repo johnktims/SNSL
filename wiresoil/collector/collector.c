@@ -2,6 +2,9 @@
 #include "packet.h"
 #include "snsl.h"
 
+uint8 u8_pollingTimeout;
+uint8 u8_failureLimit;
+
 uint8 blocking_inChar()
 {
     // Wait for character
@@ -68,9 +71,11 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 
 	uint8 tmp = 0;
 	uint8 packet_length = 0;
-	for(tmp = 0; tmp < 6; tmp++)
+	uint8 remaining_polls = 0;
+	for(tmp = 0; tmp < 7; tmp++)
 	{
-		if (tmp == 4) packet_length = blocking_inChar() - 1;
+		if (tmp == 4) packet_length = blocking_inChar() - 2;
+		else if (tmp == 6) remaining_polls = blocking_inChar();
 		else blocking_inChar();
 	}
 
@@ -128,6 +133,10 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 	VDIP_WriteFile("DATA.TXT", psz_out);
 
 	outChar('\n');
+
+	if (remaining_polls != 0) {
+		doPoll(c_ad1, c_ad2, c_ad3);
+	}
 
 	return 0x01;
 }
@@ -214,7 +223,50 @@ int main(void) {
 
 	CONFIG_INT1_TO_RP(14);
 
+	u8_pollingTimeout = 5;
+	u8_failureLimit = 5;
+
 	if (!TEST_SWITCH) {
+		uint8 u8_menuIn;
+
+		outString("\n\n\n");
+		outString("Setup Mode:\n\n");
+		outString("Choose an option -\n\n");
+		outString("1. Configure clock\n");
+		outString("2. Set polling timeout\n");
+		outString("3. Set node failure limit\n");
+		outString("4. Reset node ignore list\n");
+		outString("--> ");
+		u8_menuIn = inChar();
+		DELAY_MS(100);
+
+		if (u8_menuIn == '1') {
+		}
+		else if (u8_menuIn == '2') {
+			outString("\nThis value is the ammount of time to wait during polling before skipping unresponsive node.\n");
+			outString("\nCurrent timeout (seconds): ");
+			outUint8Decimal(u8_pollingTimeout);
+			outString("\nNew timeout (seconds, max 15): ");
+			char timeout_buff[3];
+			inStringEcho(timeout_buff, 2);
+			outString("\nNew timeout value saved.");
+			WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
+		}
+		else if (u8_menuIn == '3') {
+			outString("\nThis value is the number of failures to respond a sensor node has before it will be ignored.\n");
+			outString("\nCurrent failure limit: ");
+			outUint8Decimal(u8_failureLimit);
+			outString("\nNew failure limit: ");
+			char failure_buff[3];
+			inStringEcho(failure_buff, 2);
+			outString("\nNew failure limit saved.");
+			WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
+		}
+		else if (u8_menuIn == '4') {
+			outString("Resetting node ignore list........");
+			outString("\nNode ignore list reset completed.");
+			WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
+		}
 	}
 	else {
 		DELAY_MS(500);		//wait for SLEEP_INPUT to stabilize before attaching interrupt

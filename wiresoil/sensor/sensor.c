@@ -6,6 +6,8 @@
 #define SLEEP_INPUT _RB14
 #define TEST_SWITCH _RB8
 
+uint8 remaining_polls;
+
 typedef union _unionRTCC {
 	struct { //four 16 bit registers
 				uint8 yr;
@@ -19,26 +21,6 @@ typedef union _unionRTCC {
 	}u8;
 	uint16 regs[4];
 }unionRTCC;
-
-void _ISRFAST _INT1Interrupt (void) {
- 	U2MODEbits.UARTEN = 1;                    // enable UART RX/TX
- 	U2STAbits.UTXEN = 1;                      //enable the transmitter
-
-	if (SLEEP_INPUT) {
-		_DOZE = 8; //chose divide by 32 
-		while (SLEEP_INPUT) {
-			_DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
-			if (isCharReady2()) {
-				_DOZEN = 0;
-				parseInput();  //satisfy the polling
-			} 
-		}
-	}
-
-	U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
-	U2STAbits.UTXEN = 0;                      //disable the transmitter
-	_INT1IF = 0;		//clear interrupt flag before exiting
-}
 
 unionRTCC u_RTCC;
 
@@ -113,10 +95,12 @@ void parseInput(void){
 	while (!RCFGCALbits.RTCSYNC) {
 	}
 	readRTCC();
-
+	//packet structure: 0x1E(1)|Packet Length(1)|Packet Type(1)|Remaining polls(1)|Timestamp(6)|Temp data(10)|Redox data(8)|
+	//					Reference Voltage(2)|Node Name(12 max)
 	SendPacketHeader();
-	outChar2(27+strlen(fdata.dat.node_name));
+	outChar2(28+strlen(fdata.dat.node_name));
 	outChar2(APP_SMALL_DATA);
+	outChar2(remaining_polls);	//remaining polls 
 	//outString("MDYHMS");
 	outChar2(u_RTCC.u8.month);
 	outChar2(u_RTCC.u8.date);
@@ -129,6 +113,30 @@ void parseInput(void){
 	outString2("rV");
 	outString2(fdata.dat.node_name);
 	//outString2("12_node_test");
+
+	if (remaining_polls != 0x00) {
+		remaining_polls--;
+	}
+}
+
+void _ISRFAST _INT1Interrupt (void) {
+ 	U2MODEbits.UARTEN = 1;                    // enable UART RX/TX
+ 	U2STAbits.UTXEN = 1;                      //enable the transmitter
+
+	if (SLEEP_INPUT) {
+		_DOZE = 8; //chose divide by 32 
+		while (SLEEP_INPUT) {
+			_DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
+			if (isCharReady2()) {
+				_DOZEN = 0;
+				parseInput();  //satisfy the polling
+			} 
+		}
+	}
+
+	U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
+	U2STAbits.UTXEN = 0;                      //disable the transmitter
+	_INT1IF = 0;		//clear interrupt flag before exiting
 }
 
 /// Sleep Input pin configuration
@@ -159,6 +167,8 @@ int main(void) {
 
 	CONFIG_INT1_TO_RP(14);
 
+	remaining_polls = 0x05;
+
 	__builtin_write_OSCCONL(OSCCON | 0x02);
 
 	setRTCCVals();
@@ -181,7 +191,7 @@ int main(void) {
 			outString("\n\nInitializing clock....");
 			setRTCC();
 			outString("\nTesting clock (press any key to end):\n");
-			while (1) {
+			while (!isCharReady()) {
 				if (RCFGCALbits.RTCSYNC) {
 					readRTCC();
 					char buff[8];
