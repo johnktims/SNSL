@@ -77,7 +77,7 @@ file_007=collector.c
 file_008=..\common\snsl.c
 file_009=..\common\vdip.c
 file_010=..\common\spi.c
-file_011=C:\Users\Turner\Desktop\wiresoil\common\pic24_flash.c
+file_011=..\common\pic24_flash.c
 file_012=..\include\vdip.h
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}

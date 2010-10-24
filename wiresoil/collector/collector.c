@@ -200,8 +200,6 @@ void _ISRFAST _INT1Interrupt(void) {
 				}
 				sendEndPoll();
 
-				//doPoll('\x00', '\x32', '\x64');
-
 				VDIP_CleanupDirList(data);
 				VDIP_Reset();
 			}
