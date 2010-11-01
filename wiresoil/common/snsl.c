@@ -165,3 +165,28 @@ void SNSL_PrintNodeName()
 
 	outString(fdata.dat.node_name);
 }
+
+//**********************************************************
+/**
+ * @brief Configure PIC for low power mode
+ * @note  This is a rewrite of the function from pic24_util.c. This will only work for the PIC24FJ64GA102.
+ */
+//**********************************************************
+
+void SNSL_configLowPower() {
+	//Config all digital I/O pins as inputs
+	//TRISx regs control I/O status: 1 = input 0 = output
+	TRISB = 0xFFFF;
+	TRISA = 0xFFFF;
+
+	//Config all analog pins as digital I/O
+	//AD1PCFG reg controls AD pin config: 1 = digital input 0 = analog input
+	AD1PCFG = 0xFFFF;
+
+	//Enable all pullups except SOSCI(CN1) and SOSCO (CN0)
+	//1 = pull-up on 0 = pull-up off
+	//CNPU2 = CN31 -> CN16
+	//CNPU2 = 0xFFFF;
+	//CNPU1 = CN15 -> CN0 (don't want pull-up on CN1 and CN0)
+	//CNPU1 = 0xFFFC;
+}

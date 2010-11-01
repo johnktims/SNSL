@@ -2,7 +2,7 @@
 #include "packet.h"
 #include "snsl.h"
 
-/****************************GLOBAL VARIABLES*********************/
+/****************************GLOBAL VARIABLES****************************/
 
 uint8 u8_failureLimit;
 uint8 u8_stopPolling;
@@ -11,7 +11,7 @@ uint32 u32_hopTimeout;
 
 union32 timer_max_val;
 
-/****************************PIN CONFIGURATION********************/
+/****************************PIN CONFIGURATION****************************/
 
 #define SLEEP_INPUT _RB14
 #define TEST_SWITCH _RB8
@@ -45,7 +45,16 @@ inline void CONFIG_SLEEP_TIME() {
 	DELAY_US(1);
 }
 
-/****************************TIMER CONFIGURATION******************/
+void configHighPower() {
+	CONFIG_SLEEP_INPUT();
+	CONFIG_TEST_SWITCH();
+	CONFIG_VDIP_POWER();
+	CONFIG_SLEEP_TIME();
+
+	CONFIG_INT1_TO_RP(14);
+}
+
+/****************************TIMER CONFIGURATION****************************/
 
 void configTimer23(void) {
 	T2CON = T2_OFF | T2_IDLE_CON | T2_GATE_OFF | T2_32BIT_MODE_ON
@@ -66,7 +75,7 @@ void startTimer23(void) {
 	T2CONbits.TON = 1;	//start the timer
 }
 
-/****************************POLLING FUNCTIONS******************/
+/****************************POLLING FUNCTIONS****************************/
 
 uint8 blocking_inChar()
 {
@@ -246,10 +255,12 @@ void sendEndPoll(void) {
 	outString2(sz_data);
 }
 
-/****************************INTERRUPT HANDLERS*******************/
+/****************************INTERRUPT HANDLERS****************************/
 
 void _ISRFAST _INT1Interrupt(void) {
 	uint32 u32_index = 0;
+
+	configHighPower();
 
 	_LATB7 = 0;		//enable power to VDIP
 
@@ -277,6 +288,7 @@ void _ISRFAST _INT1Interrupt(void) {
 		}
 	}
 	_LATB7 = 1;					//cut power to VDIP
+	SNSL_configLowPower();
 
 	_INT1IF = 0;
 }
@@ -288,9 +300,10 @@ void _ISRFAST _T3Interrupt (void) {
 	_T3IF = 0;	//clear interrupt flag
 }
 
-/****************************MAIN******************/
+/****************************MAIN******************************************/
 
 int main(void) {
+	SNSL_configLowPower();
 	configClock();
 	configDefaultUART(DEFAULT_BAUDRATE);
 	configUART2(DEFAULT_BAUDRATE);
