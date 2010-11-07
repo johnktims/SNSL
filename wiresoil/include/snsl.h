@@ -4,13 +4,20 @@
 #include "pic24_all.h"
 #include "vdip.h"
 
-#define MAX_NODE_ADDR_LEN 3+1
-#define MAX_NODE_NAME_LEN 12+1
-#define FILE_NODES "NODES.TXT"
+#define MAX_NODE_ADDR_LEN  (3+1)
+#define MAX_NODE_NAME_LEN  (12+1)
+#define FILE_NODES         "NODES.TXT"
+#define FILE_CONFIG        "CONFIG.TXT"
+#define LAST_POLL_FLAG     0xff
+#define UNKNOWN_NODE       0xff
 
-// RTSP
-typedef struct _REC {
-  char node_name[MAX_NODE_NAME_LEN];
+
+/***********************************************************
+ * RTSP Structures
+ **********************************************************/ 
+typedef struct _REC
+{
+  uint8 node_name[MAX_NODE_NAME_LEN];
 }REC;
 
 #define LAST_IMPLEMENTED_PMEM 0x00ABFF
@@ -18,19 +25,40 @@ typedef struct _REC {
 #define NUM_ROWS (((sizeof(REC))/FLASH_ROWBYTES) + 1)
 #define FLASH_DATA_SIZE (NUM_ROWS*FLASH_ROWBYTES)
 
-typedef union _UFDATA{
-  REC  dat;
-  
-  // Worst case allocates extra row, but
-  // ensures RAM data block is multiple
-  // of row size
-  char fill[FLASH_DATA_SIZE];
+typedef union _UFDATA
+{
+    REC  dat;
+
+    // Worst case allocates extra row, but
+    // ensures RAM data block is multiple
+    // of row size
+    uint8 fill[FLASH_DATA_SIZE];
 }UFDATA;
 
-// Functions
-char** SNSL_ParseNodeNames(void);
-void   SNSL_GetNodeName(UFDATA *);
-void   SNSL_SetNodeName(char *);
-void   SNSL_PrintNodeName(void);
+
+/***********************************************************
+ * Structures
+ **********************************************************/ 
+typedef struct _POLL
+{
+    uint8 name[MAX_NODE_ADDR_LEN],
+          attempts;
+}POLL;
+
+
+/***********************************************************
+ * Function Definitions
+ **********************************************************/
+uint8** SNSL_ParseNodeNames(void);
+void    SNSL_GetNodeName(UFDATA *);
+void    SNSL_SetNodeName(uint8 *);
+void    SNSL_PrintNodeName(void);
+
+POLL*   SNSL_ParseConfig(uint8 *, uint8 *, uint8 *);
+void    SNSL_WriteConfig(uint8, uint8, uint8, POLL *);
+POLL*   SNSL_MergeConfig(void);
+void    SNSL_PrintConfig(void);
+uint8   SNSL_SearchConfig(uint8 *, POLL *);
+void    SNSL_ParseConfigHeader(uint8 *, uint8 *, uint8 *);
 
 #endif // SNSL_H

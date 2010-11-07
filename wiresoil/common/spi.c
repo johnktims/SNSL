@@ -1,7 +1,7 @@
 #include "pic24_all.h"
 #include "pic24_ports.h"
 #include "vdip.h"
-#include <stdio.h>
+//#include <stdio.h>
 
 /***********************************************************
  * Pin Mappings
@@ -40,13 +40,13 @@
 /**
  * @brief Transfer data to/from the VDIP
  * @param[in] int The direction of the transfer
- * @param[out] char* The data to send or a buffer to fill
+ * @param[out] uint8* The data to send or a buffer to fill
  */
 //**********************************************************
-int SPI_Xfer(int spiDirection, char *pSpiData)
+int SPI_Xfer(int spiDirection, uint8 *pSpiData)
 {
-	unsigned char retData,
-				  bitData;
+	uint8 retData,
+	      bitData;
 
 	// Clock 1 - Start State
 	PORT_SDI = 1;
@@ -196,21 +196,22 @@ void SPI_Init(void)
 
 //**********************************************************
 /**
- * @brief Wait till one character is read and then return it
- * @return char The received character
+ * @brief Wait till one uint8acter is read and then return it
+ * @return uint8 The received uint8acter
  */
 //**********************************************************
-char SPI_ReadWait(void)
+uint8 SPI_ReadWait(void)
 {
-	char spiData;
+	uint8 spiData;
 	
 	while (SPI_Xfer(DIR_SPIREAD, &spiData)){
-		printf("%c",spiData);
+		//printf("%c",spiData);
+		outChar(spiData);
 	}
 
     // If the new line isn't added, then the
-    // characters just overwrite each other, and
-    // since a space is the last character before
+    // uint8acters just overwrite each other, and
+    // since a space is the last uint8acter before
     // the EOS, none of the output shows up.
     if(spiData == 0x0d)
     {
@@ -223,22 +224,22 @@ char SPI_ReadWait(void)
 
 //**********************************************************
 /**
- * @brief Non-blocking read of one character from SPI bus
- * @return char The received character
+ * @brief Non-blocking read of one uint8acter from SPI bus
+ * @return uint8 The received uint8acter
  */
 //**********************************************************
-char SPI_Read(char *pSpiData)
+uint8 SPI_Read(uint8 *pSpiData)
 {
 	return SPI_Xfer(DIR_SPIREAD, pSpiData);
 }
 
 //**********************************************************
 /**
- * @brief Blocking write of character to SPI bus
- * @param[in] char The byte to be transmitted
+ * @brief Blocking write of uint8acter to SPI bus
+ * @param[in] uint8 The byte to be transmitted
  */
 //**********************************************************
-void SPI_Write(char spiData)
+void SPI_Write(uint8 spiData)
 {
 	while(SPI_Xfer(DIR_SPIWRITE, &spiData));
 }
@@ -246,15 +247,34 @@ void SPI_Write(char spiData)
 
 //**********************************************************
 /**
- * @brief Send a string of characters to the SPI bus
- * @param[in] const char* The string to send
+ * @brief Send a string of uint8acters to the SPI bus
+ * @param[in] const uint8* The string to send
  */
 //**********************************************************
-void SPI_WriteStr(const char *spiData)
+void SPI_WriteStr(const uint8 *spiData)
 {
     while(*spiData)
     {
         SPI_Write(*(spiData++));
+    }    
+    
+	// Carriage Return - every command needs one.
+	SPI_Write(0x0d);
+}
+
+
+//**********************************************************
+/**
+ * @brief Send a string of uint8acters to the SPI bus
+ * @param[in] const uint8* The string to send
+ */
+//**********************************************************
+void SPI_WriteStrN(const uint8 *spiData, uint32 u32_size)
+{
+    uint32 u32_i;
+    for(u32_i = 0; u32_i < u32_size; ++u32_i)
+    {
+        SPI_Write(spiData[u32_i]);
     }    
     
 	// Carriage Return - every command needs one.

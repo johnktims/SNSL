@@ -4,7 +4,6 @@
 #include "pic24_all.h"
 #include "spi.h"
 #include "vdip.h"
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -13,21 +12,21 @@
 /***********************************************************
  * Macro Definitions
  **********************************************************/
-#define DEBUG 0
-// Is this a DEBUG build?
-#ifndef DEBUG
-#define DEBUG 0
-#endif // DEBUG
+#define VDIP_DEBUG 0
+// Is this a VDIP_DEBUG build?
+#ifndef VDIP_DEBUG
+#define VDIP_DEBUG 0
+#endif // VDIP_DEBUG
 
-// Print output if this is a DEBUG build
-#if DEBUG
-#define DEBUG_OUT(msg) \
-    /*(puts("`"msg"`"))*/
+// Print output if this is a VDIP_DEBUG build
+#if VDIP_DEBUG
+#define VDIP_DEBUG_OUT(msg) \
+    (outString("`"msg"`\n"))
 #else
-#define DEBUG_OUT(msg)
+#define VDIP_DEBUG_OUT(msg)
 #endif
 
-// Remove leading newline characters
+// Remove leading newline uint8acters
 #define REMOVE_LEADING_NEWLINES(c) \
     while((c) == LF)               \
     {                              \
@@ -46,7 +45,7 @@
 //**********************************************************
 void VDIP_Init(void)
 {
-    DEBUG_OUT("VDIP_Init: Started.");
+    VDIP_DEBUG_OUT("VDIP_Init: Started.");
     CONFIG_RESET();
 
     SPI_Init();
@@ -59,7 +58,7 @@ void VDIP_Init(void)
     // Put vdip in short command mode
     VDIP_SCS();
 
-    DEBUG_OUT("VDIP_Init: Finished.");
+    VDIP_DEBUG_OUT("VDIP_Init: Finished.");
 }
 
 
@@ -75,13 +74,13 @@ void VDIP_Init(void)
 //**********************************************************
 uint8 VDIP_Sync(void)
 {
-	DEBUG_OUT("VDIP_Sync: Started.");
+	VDIP_DEBUG_OUT("VDIP_Sync: Started.");
 
 	// Initialize the sync by sending and E
 	SPI_WriteStr("E");
 	DELAY_MS(10);
 
-    char c = SPI_ReadWait();
+    uint8 c = SPI_ReadWait();
     
     REMOVE_LEADING_NEWLINES(c);
 
@@ -92,7 +91,7 @@ uint8 VDIP_Sync(void)
         //putchar(c);
     }
 
-    DEBUG_OUT("VDIP_Sync: Finished.");
+    VDIP_DEBUG_OUT("VDIP_Sync: Finished.");
     return 1;
 }
 
@@ -105,24 +104,24 @@ uint8 VDIP_Sync(void)
 //**********************************************************
 uint8 VDIP_SCS(void)
 {
-    DEBUG_OUT("VDIP_SCS: Started. Setting"
+    VDIP_DEBUG_OUT("VDIP_SCS: Started. Setting"
 	          " Short Command Set");
 	          
 	//VDIP_Sync();
 
 	SPI_WriteStr(SCS);
-	char c = SPI_ReadWait();
+	uint8 c = SPI_ReadWait();
 	
 	REMOVE_LEADING_NEWLINES(c);
 	
 	if(c == EOC)
 	{
-	    DEBUG_OUT("VDIP_SCS: Finished."
+	    VDIP_DEBUG_OUT("VDIP_SCS: Finished."
 	              " In Short Command Set");
 	    return 1;
 	}
 
-    DEBUG_OUT("VDIP_SCS: Finished."
+    VDIP_DEBUG_OUT("VDIP_SCS: Finished."
               " NOT In Short Command Set");
 	return 0;
 }
@@ -135,14 +134,14 @@ uint8 VDIP_SCS(void)
 //**********************************************************
 void VDIP_Reset(void)
 {
-    DEBUG_OUT("VDIP_Reset: Started.");
+    VDIP_DEBUG_OUT("VDIP_Reset: Started.");
 
     RESET = 0;
     DELAY_MS(1000);
     RESET = 1;
     DELAY_MS(1000);
 
-    DEBUG_OUT("VDIP_Reset: Finished.");
+    VDIP_DEBUG_OUT("VDIP_Reset: Finished.");
 }
 
 
@@ -150,13 +149,13 @@ void VDIP_Reset(void)
 /**
  * @brief List the files and folders in the current
  *        directory
- * @return A character array of file and directory names.
+ * @return A uint8acter array of file and directory names.
  * @see VDIP_CleanupDirList
  */
 //**********************************************************
-char** VDIP_ListDir(void)
+uint8** VDIP_ListDir(void)
 {
-    DEBUG_OUT("VDIP_ListDir: Started.");
+    VDIP_DEBUG_OUT("VDIP_ListDir: Started.");
 
 	//VDIP_Sync();
 	    
@@ -164,7 +163,7 @@ char** VDIP_ListDir(void)
     uint32 u32_items = VDIP_DirItemCount();
 
     // Allocate memory for the array of pointers
-    char **data = (char**)malloc(sizeof(char*) * (u32_items + 1));
+    uint8 **data = (uint8**)malloc(sizeof(uint8*) * (u32_items + 1));
     
     // Null terminate the array so it will be easy to traverse
     data[u32_items] = '\0';
@@ -175,14 +174,14 @@ char** VDIP_ListDir(void)
     // may be sparse.
     for(u32_index = 0; u32_index < u32_items; u32_index++)
     {
-        data[u32_index] = (char*)malloc(sizeof(char) * MAX_FILENAME_LEN);
+        data[u32_index] = (uint8*)malloc(sizeof(uint8) * MAX_FILENAME_LEN);
     }
 
     // Request a directory listing
     SPI_Write(DIR);
     SPI_Write(CR);
 
-    char c = SPI_ReadWait();
+    uint8 c = SPI_ReadWait();
 
     REMOVE_LEADING_NEWLINES(c);
 
@@ -192,7 +191,7 @@ char** VDIP_ListDir(void)
     // Get the file names from the VDIP
     while(c != EOC)
     {
-        // File names end with a line feed character
+        // File names end with a line feed uint8acter
         if(c == LF)
         {
             data[u32_row][u32_col] = '\0';
@@ -206,7 +205,7 @@ char** VDIP_ListDir(void)
         c = SPI_ReadWait();
     }
 
-    DEBUG_OUT("VDIP_ListDir: Finished.");
+    VDIP_DEBUG_OUT("VDIP_ListDir: Finished.");
     return data;
 }
 
@@ -218,7 +217,7 @@ char** VDIP_ListDir(void)
  * @see VDIP_ListDir
  */
 //**********************************************************
-void VDIP_CleanupDirList(char **data)
+void VDIP_CleanupDirList(uint8 **data)
 {
     uint32 u32_index = 0;
     while(data[u32_index] != '\0')
@@ -239,7 +238,7 @@ void VDIP_CleanupDirList(char **data)
 //**********************************************************
 uint32 VDIP_DirItemCount(void)
 {
-    DEBUG_OUT("VDIP_DirItemCount: Started.");
+    VDIP_DEBUG_OUT("VDIP_DirItemCount: Started.");
     
 	VDIP_Sync();
 
@@ -247,7 +246,7 @@ uint32 VDIP_DirItemCount(void)
     SPI_Write(DIR);
     SPI_Write(CR);
 
-    char c = SPI_ReadWait();
+    uint8 c = SPI_ReadWait();
     
     REMOVE_LEADING_NEWLINES(c);
     
@@ -267,9 +266,10 @@ uint32 VDIP_DirItemCount(void)
         c = SPI_ReadWait();
     }
 
-    DEBUG_OUT("VDIP_DirItemCount: Finished.");
+    VDIP_DEBUG_OUT("VDIP_DirItemCount: Finished.");
     return u32_items;
 }
+
 
 //**********************************************************
 /**
@@ -278,9 +278,9 @@ uint32 VDIP_DirItemCount(void)
  * @return uint8 The size of the file in bytes
  */
 //**********************************************************
-uint32 VDIP_FileSize(const char *name)
+uint32 VDIP_FileSize(const uint8 *name)
 {
-    DEBUG_OUT("VDIP_FileSize: Started.");
+    VDIP_DEBUG_OUT("VDIP_FileSize: Started.");
     
 	//VDIP_Sync();
 
@@ -295,7 +295,7 @@ uint32 VDIP_FileSize(const char *name)
 
     // Parse the string
     uint32 u32_size = 0;
-    char ch_prior_space = 0,
+    uint8 ch_prior_space = 0,
          ch_shift = 0,
          c = SPI_ReadWait();
 
@@ -319,7 +319,7 @@ uint32 VDIP_FileSize(const char *name)
         c = SPI_ReadWait();
     }
 
-    DEBUG_OUT("VDIP_FileSize: Finished.");
+    VDIP_DEBUG_OUT("VDIP_FileSize: Finished.");
     return u32_size;
 }
 
@@ -328,19 +328,19 @@ uint32 VDIP_FileSize(const char *name)
 /**
  * @brief Read a file into a string
  * @param[in] name The name of the file
- * @return char* A string containing the contents
+ * @return uint8* A string containing the contents
  *               of the file
  */
 //**********************************************************
-char* VDIP_ReadFile(const char *name)
+uint8* VDIP_ReadFile(const uint8 *name)
 {
-    DEBUG_OUT("VDIP_ReadFile: Started.");
+    VDIP_DEBUG_OUT("VDIP_ReadFile: Started.");
 	
 	//VDIP_Sync();
 
     uint32 u32_bytes = VDIP_FileSize(name) + 1,
            u32_index = 0;
-    char *data = (char*)malloc(u32_bytes);
+    uint8 *data = (uint8*)malloc(u32_bytes);
 
     //printf("ReadFile->FileSize = `%u`\n", (unsigned)u32_bytes);
 
@@ -348,7 +348,7 @@ char* VDIP_ReadFile(const char *name)
     SPI_Write(SPACE);
     SPI_WriteStr(name);
     
-    char c = SPI_ReadWait();
+    uint8 c = SPI_ReadWait();
     
     REMOVE_LEADING_NEWLINES(c);
     
@@ -359,7 +359,7 @@ char* VDIP_ReadFile(const char *name)
     }
     data[u32_index] = '\0';
 
-    DEBUG_OUT("VDIP_ReadFile: Finished.");
+    VDIP_DEBUG_OUT("VDIP_ReadFile: Finished.");
     return data;
 }
 
@@ -371,20 +371,37 @@ char* VDIP_ReadFile(const char *name)
  * @param[in] data The data to write
  */
 //**********************************************************
-void VDIP_WriteFile(const char *name, const char *data)
+void VDIP_WriteFile(const uint8 *name, const uint8 *data)
 {
-    DEBUG_OUT("VDIP_WriteFile: Started.");
+    VDIP_DEBUG_OUT("VDIP_WriteFile: Started.");
 
-    uint32 u32_size  = strlen(data);
+    uint32 u32_size = strlen(data);
+    VDIP_WriteFileN(name, data, u32_size);
+
+    VDIP_DEBUG_OUT("VDIP_WriteFile: Finished.");
+}
+
+
+//**********************************************************
+/**
+ * @brief Open a file for writing
+ * @param[in] name The name of the file
+ * @param[in] data The data to write
+ * @param[in] size The number of bytes to write
+ */
+//**********************************************************
+void VDIP_WriteFileN(const uint8 *name, const uint8 *data, uint32 u32_size)
+{
+    VDIP_DEBUG_OUT("VDIP_WriteFileN: Started.");
 
     VDIP_Sync();
 
-  	DEBUG_OUT("Put in Ascii mode");
+  	VDIP_DEBUG_OUT("Put in Binary mode");
     //SPI_Write(IPA);
     SPI_Write(IPH);
     SPI_Write(CR);
 
-    DEBUG_OUT("Open the file for writing");
+    VDIP_DEBUG_OUT("Open the file for writing");
     SPI_Write(OPW);
     SPI_Write(SPACE);
     SPI_WriteStr(name);
@@ -400,21 +417,62 @@ void VDIP_WriteFile(const char *name, const char *data)
     for(u32_index = 24; u32_index >= 0; u32_index -= 8)
     {
         i8_byte = (int8)(u32_size >> u32_index);
-        //printf("WRF: %d/%u\n", i8_byte, (unsigned)u32_size);
         SPI_Write(i8_byte);
     }
     SPI_Write(CR);
 
-    DEBUG_OUT("Write the actual message.");
-    SPI_WriteStr(data);
+    VDIP_DEBUG_OUT("Write the actual message.");
+    SPI_WriteStrN(data, u32_size);
     DELAY_MS(100);
 
-    DEBUG_OUT("Close the file");
+    VDIP_DEBUG_OUT("Close the file");
     SPI_Write(CLF);
     SPI_Write(SPACE);
     SPI_WriteStr(name);
     DELAY_MS(100);
     VDIP_Sync();
 
-    DEBUG_OUT("VDIP_WriteFile: Finished.");
+    VDIP_DEBUG_OUT("VDIP_WriteFileN: Finished.");
+}
+
+//**********************************************************
+/**
+ * @brief Delete a file
+ * @param[in] name The name of the file
+ */
+//**********************************************************
+void VDIP_DeleteFile(const uint8 *name)
+{
+    VDIP_DEBUG_OUT("VDIP_DeleteFile: Started.");
+    
+    SPI_Write(DLF);
+    SPI_Write(SPACE);
+    SPI_WriteStr(name);
+
+    VDIP_DEBUG_OUT("VDIP_DeleteFile: Finished.");
+}
+
+
+//**********************************************************
+/**
+ * @brief Print the files in the current directory
+ */
+//**********************************************************
+void VDIP_PrintListDir(void)
+{
+    VDIP_DEBUG_OUT("VDIP_PrintListDir: Started.");
+
+    uint8 **data = VDIP_ListDir();
+    uint32 u32_index = 0;
+    while(data[u32_index])
+    {
+        outUint32(u32_index);
+        outString(": ");
+        outString(data[u32_index]);
+        outChar('\n');
+        ++u32_index;
+    }
+    VDIP_CleanupDirList(data);
+
+    VDIP_DEBUG_OUT("VDIP_PrintListDir: Finished.");
 }

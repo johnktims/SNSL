@@ -274,14 +274,24 @@ void _ISRFAST _INT1Interrupt(void) {
 				VDIP_Init();
 				char **data = SNSL_ParseNodeNames();
 
-				while (data[u32_index] != '\0') {
-					doPoll(data[u32_index][0],
-							data[u32_index][1],
-							data[u32_index][2]);
-					++u32_index;
+				while(data[u32_index] != '\0')
+    		    {
+    				doPoll(data[u32_index][0],
+    				       data[u32_index][1],
+    				       data[u32_index][2]);
+    				++u32_index;
 				}
 				sendEndPoll();
 
+<<<<<<< .mine
+                VDIP_CleanupDirList(data);
+                VDIP_Reset();
+            }
+        }
+    }
+    _LATB7 = 1;					//cut power to VDIP
+    _INT1IF = 0;
+=======
 				VDIP_CleanupDirList(data);
 				VDIP_Reset();
 			}
@@ -291,6 +301,7 @@ void _ISRFAST _INT1Interrupt(void) {
 	SNSL_configLowPower();
 
 	_INT1IF = 0;
+>>>>>>> .r32
 }
 
 void _ISRFAST _T3Interrupt (void) {

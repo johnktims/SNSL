@@ -11,6 +11,8 @@
 #define RESET _LATB13
 #define CONFIG_RESET() CONFIG_RB13_AS_DIG_OUTPUT()
 
+#define CONFIG_VDIP_POWER()	CONFIG_RB7_AS_DIG_OD_OUTPUT(); \
+                            DELAY_US(1)
 
 /***********************************************************
  * Common Characters
@@ -40,6 +42,9 @@
 // OPW: Open file for writing
 #define OPW 0x9
 
+// DLF: Delete file
+#define DLF 0x7
+
 // IPA: Ascii
 #define IPA 0x90
 
@@ -62,21 +67,27 @@
 /***********************************************************
  * Function Definitions
  **********************************************************/
+void   VDIP_Init(void);
+void   VDIP_Reset(void);
+void   VDIP_Sync_E(void);
+uint8  VDIP_Sync(void);
+uint8  VDIP_SCS(void);
 
-void  VDIP_Init(void);
-void  VDIP_Reset(void);
-void  VDIP_Sync_E(void);
-uint8 VDIP_Sync(void);
-uint8 VDIP_SCS(void);
+void   VDIP_WriteFile (const uint8 *,
+                       const uint8 *);
+void   VDIP_WriteFileN(const uint8 *,
+                       const uint8 *,
+                       uint32);
 
-void  VDIP_WriteFile(const char *,
-                     const char *);
-char* VDIP_ReadFile(const char *);
+uint8* VDIP_ReadFile(const uint8 *);
+void VDIP_DeleteFile(const uint8 *);
 
-uint32 VDIP_FileSize(const char *);
+uint32 VDIP_FileSize(const uint8 *);
 uint32 VDIP_DirItemCount(void);
 
-char** VDIP_ListDir(void);
-void   VDIP_CleanupDirList(char **);
+uint8** VDIP_ListDir(void);
+void   VDIP_CleanupDirList(uint8 **);
+
+void VDIP_PrintListDir(void);
 
 #endif // VDIP_H
