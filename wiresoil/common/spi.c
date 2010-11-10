@@ -196,18 +196,18 @@ void SPI_Init(void)
 
 //**********************************************************
 /**
- * @brief Wait till one uint8acter is read and then return it
- * @return uint8 The received uint8acter
+ * @brief Wait till one character is read and then return it
+ * @return uint8 The received character
  */
 //**********************************************************
 uint8 SPI_ReadWait(void)
 {
 	uint8 spiData;
 	
-	while (SPI_Xfer(DIR_SPIREAD, &spiData)){
-		//printf("%c",spiData);
-		outChar(spiData);
-	}
+	while (SPI_Xfer(DIR_SPIREAD, &spiData))
+    {
+    	//outChar(spiData);
+    }
 
     // If the new line isn't added, then the
     // uint8acters just overwrite each other, and

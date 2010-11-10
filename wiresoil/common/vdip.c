@@ -149,7 +149,7 @@ void VDIP_Reset(void)
 /**
  * @brief List the files and folders in the current
  *        directory
- * @return A uint8acter array of file and directory names.
+ * @return A character array of file and directory names.
  * @see VDIP_CleanupDirList
  */
 //**********************************************************

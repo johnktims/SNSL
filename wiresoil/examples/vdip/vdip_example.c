@@ -29,7 +29,8 @@ int main(void)
     VDIP_DeleteFile("LOG1.TXT");
     */
 
-    uint8 hops=2, timeout=4, max = 5;
+    uint8 hops=2, max = 5;
+    uint32 timeout=4;
     //VDIP_PrintListDir();
 
     SNSL_PrintConfig();

@@ -4,6 +4,7 @@
 #include "pic24_all.h"
 #include "vdip.h"
 
+#define HEADER_LEN         0x6
 #define MAX_NODE_ADDR_LEN  (3+1)
 #define MAX_NODE_NAME_LEN  (12+1)
 #define FILE_NODES         "NODES.TXT"
@@ -54,11 +55,11 @@ void    SNSL_GetNodeName(UFDATA *);
 void    SNSL_SetNodeName(uint8 *);
 void    SNSL_PrintNodeName(void);
 
-POLL*   SNSL_ParseConfig(uint8 *, uint8 *, uint8 *);
-void    SNSL_WriteConfig(uint8, uint8, uint8, POLL *);
+POLL*   SNSL_ParseConfig(uint8 *, uint32 *, uint8 *);
+void    SNSL_WriteConfig(uint8, uint32, uint8, POLL *);
 POLL*   SNSL_MergeConfig(void);
 void    SNSL_PrintConfig(void);
 uint8   SNSL_SearchConfig(uint8 *, POLL *);
-void    SNSL_ParseConfigHeader(uint8 *, uint8 *, uint8 *);
+void    SNSL_ParseConfigHeader(uint8 *, uint32 *, uint8 *);
 
 #endif // SNSL_H

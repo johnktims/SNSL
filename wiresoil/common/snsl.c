@@ -162,7 +162,7 @@ void SNSL_SetNodeName(uint8 *node_name)
  * @brief Print a node's name
  */
 //**********************************************************
-void SNSL_PrintNodeName()
+void SNSL_PrintNodeName(void)
 {
 	UFDATA fdata;
 	doRead(&fdata);
@@ -183,13 +183,18 @@ void SNSL_PrintNodeName()
  *             gives up completely.
  */
 //**********************************************************
-void SNSL_ParseConfigHeader(uint8 *hops, uint8 *timeout_per_hop,
+void SNSL_ParseConfigHeader(uint8 *hops, uint32 *timeout_per_hop,
                        uint8 *max_attempts)
 {
-    uint8 *sz_data = VDIP_ReadFile(FILE_CONFIG);
-    *hops            = sz_data[0];
-    *timeout_per_hop = sz_data[1];
-    *max_attempts    = sz_data[2];
+    uint8 *sz_data    = VDIP_ReadFile(FILE_CONFIG);
+    *hops             = sz_data[0];
+
+    *timeout_per_hop |= ((uint32)sz_data[1] << 24);
+    *timeout_per_hop |= ((uint32)sz_data[2] << 16);
+    *timeout_per_hop |= ((uint32)sz_data[3] << 8);
+    *timeout_per_hop |= ((uint32)sz_data[4]);
+    
+    *max_attempts     = sz_data[5];
     free(sz_data);
 }
     
@@ -206,13 +211,13 @@ void SNSL_ParseConfigHeader(uint8 *hops, uint8 *timeout_per_hop,
  *             gives up completely.
  */
 //**********************************************************
-POLL* SNSL_ParseConfig(uint8 *hops, uint8 *timeout_per_hop,
+POLL* SNSL_ParseConfig(uint8 *hops, uint32 *timeout_per_hop,
                        uint8 *max_attempts)
 {
     POLL LAST_POLL;
-    LAST_POLL.attempts = LAST_POLL_FLAG;
+    LAST_POLL.attempts  = LAST_POLL_FLAG;
 
-    uint8 *sz_data = VDIP_ReadFile(FILE_CONFIG),
+    uint8 *sz_data      = VDIP_ReadFile(FILE_CONFIG),
            u8_curr      = 0,
            u8_inComment = 0,
            u8_nodes     = 0,
@@ -230,27 +235,13 @@ POLL* SNSL_ParseConfig(uint8 *hops, uint8 *timeout_per_hop,
     // Then add one more element for the one with the
     // sentinal value for keeping track of the last poll
     // in the array of structs
-    u8_nodes = ((u32_len-3)/4) + 1;
+    u8_nodes = ((u32_len-HEADER_LEN)/4) + 1;
     u8_curr  = 0;
     POLL *polls = (POLL *)malloc(sizeof(POLL)*u8_nodes);
 
     for(u32_index = 0; u32_index < u32_len; ++u32_index)
     {
         u8_curr = sz_data[u32_index];
-        // Skip comments
-        // Design changes should remove the need for
-        // comments. Just comment out for now.
-        /*
-        if(u8_curr == '#')
-        {
-            while(u8_curr != '\n' && u8_curr)
-            {
-                u8_curr = sz_data[u32_index];
-                ++u32_index;
-            }
-            continue;
-        }
-        */
 
         switch(u32_index)
         {
@@ -258,9 +249,12 @@ POLL* SNSL_ParseConfig(uint8 *hops, uint8 *timeout_per_hop,
                 *hops = u8_curr;
                 break;
             case 1:
-                *timeout_per_hop = u8_curr;
-                break;
             case 2:
+            case 3:
+            case 4:
+                *timeout_per_hop |= (sz_data[u32_index] << (4-u32_index)*8);
+                break;
+            case 5:
                 *max_attempts = u8_curr;
                 break;
             default:
@@ -291,7 +285,7 @@ POLL* SNSL_ParseConfig(uint8 *hops, uint8 *timeout_per_hop,
  * @param[in] The array of POLLs
  */
 //**********************************************************
-void SNSL_WriteConfig(uint8 hops, uint8 timeout_per_hop,
+void SNSL_WriteConfig(uint8 hops, uint32 timeout_per_hop,
                       uint8 max_attempts, POLL *polls)
 {
     // If the file doesn't exist, the
@@ -314,10 +308,13 @@ void SNSL_WriteConfig(uint8 hops, uint8 timeout_per_hop,
     //
     // Each entry needs four bytes(3 for name and 1 for access attempts)
     // plus the three config bytes in the header
-    uint8 *sz_out = (uint8 *)malloc(sizeof(uint8)*((u8_polls*4)+3));
+    uint8 *sz_out = (uint8 *)malloc(sizeof(uint8)*((u8_polls*4)+HEADER_LEN));
 
     // Save config options
     sz_out[u32_index]   = hops;
+    sz_out[++u32_index] = timeout_per_hop >> 24;
+    sz_out[++u32_index] = timeout_per_hop >> 16;
+    sz_out[++u32_index] = timeout_per_hop >> 8;
     sz_out[++u32_index] = timeout_per_hop;
     sz_out[++u32_index] = max_attempts;
 
@@ -331,7 +328,6 @@ void SNSL_WriteConfig(uint8 hops, uint8 timeout_per_hop,
         ++u8_i;
     }
 
-    outString("WriteConfig: output string = `");
     ++u32_index;
     uint32 u32_i = 0;
     while(u32_i < u32_index)
@@ -339,10 +335,7 @@ void SNSL_WriteConfig(uint8 hops, uint8 timeout_per_hop,
         outUint8(sz_out[u32_i]);
         ++u32_i;
     }
-    outString("`\n Size of string: `");
-    outUint32(u32_index);
-    outString("`\n");
-    VDIP_WriteFileN(FILE_CONFIG, sz_out, u32_index);
+    //VDIP_WriteFileN(FILE_CONFIG, sz_out, u32_index);
     free(sz_out);
 }
 
@@ -471,10 +464,11 @@ POLL* SNSL_MergeConfig(void)
 //**********************************************************
 void SNSL_PrintConfig(void)
 {
-    uint8 hops, timeout, max;
+    uint8 hops, max;
+    uint32 timeout;
     POLL *polls = SNSL_ParseConfig(&hops, &timeout, &max);
 
-    printf("Hops: `%u`; Timeout: `%u`; Max: `%u`\n", hops, timeout, max);
+    printf("Hops: `%u`; Timeout: `%lu`; Max: `%u`\n", hops, timeout, max);
     uint8 u8_i = 0;
     while(polls[u8_i].attempts != 0xff)
     {
@@ -496,7 +490,8 @@ void SNSL_PrintConfig(void)
  */
 //**********************************************************
 
-void SNSL_configLowPower() {
+void SNSL_configLowPower(void)
+{
 	//Config all digital I/O pins as inputs
 	//TRISx regs control I/O status: 1 = input 0 = output
 	TRISB = 0xFFFF;
