@@ -32,12 +32,6 @@ inline void CONFIG_TEST_SWITCH() {
 	DELAY_US(1);
 }
 
-//VDIP power pin configuration
-inline void CONFIG_VDIP_POWER() {
-	CONFIG_RB7_AS_DIG_OD_OUTPUT();
-	DELAY_US(1);
-}
-
 //Sleep time pin configuration
 inline void CONFIG_SLEEP_TIME() {
 	CONFIG_RA2_AS_DIG_INPUT();
@@ -235,12 +229,16 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 		if (remaining_polls != 0) {
 			doPoll(c_ad1, c_ad2, c_ad3);
 		}
+		return 0x01;
 	}
 	else if (!SLEEP_TIME) {
 		//record node response failure
 		//do not record failure if in mesh setup mode (SLEEP_PIN == HIGH)
+		return 0x00;
 	}
-	return 0x01;
+	else {
+		return 0x02;
+	}
 }
 
 void sendEndPoll(void) {
@@ -263,6 +261,9 @@ void _ISRFAST _INT1Interrupt(void) {
 	configHighPower();
 
 	_LATB7 = 0;		//enable power to VDIP
+	uint8 u8_search = 0;
+	uint8 u8_pollReturn = 0;
+	POLL *polls;
 
 	while (SLEEP_INPUT) {
 		if (isCharReady2()) {
@@ -272,28 +273,85 @@ void _ISRFAST _INT1Interrupt(void) {
 
 
 				VDIP_Init();
-				char **data = SNSL_ParseNodeNames();
+				//SNSL_PrintConfig();
+				//char **data = SNSL_ParseNodeNames();
+				polls = SNSL_MergeConfig();
+				SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
+				u32_hopTimeout = 300;
+				//SNSL_PrintConfig();
+
+				outString("PARSE CONFIG HEADER: hops:");
+				outUint8(u8_numHops);
+				outString("; hop_timeout:");
+				outUint32(u32_hopTimeout);
+				outString("; failure:");
+				outUint8(u8_failureLimit);
+				outString(";\n");
+
+                uint8 u8_i = 0;
+				while(polls[u8_i].attempts != LAST_POLL_FLAG)
+				{
+    				if (polls[u8_i].attempts <= u8_failureLimit) {
+        				u8_pollReturn = doPoll(polls[u8_i].name[0],
+    				           polls[u8_i].name[1],
+    				           polls[u8_i].name[2]);
+                        outString("\n\nPoll Return: ");
+                        outUint8(u8_pollReturn);
+                        outString("\n");
+                        outUint8(u8_stopPolling);
+                        outString("\n\n");
+						if (u8_pollReturn == 0x01){
+							polls[u8_i].attempts = 0;
+						}
+						else if (u8_pollReturn == 0x00) {
+							++polls[u8_i].attempts;
+						}
+					}
+					else {
+						//log node was ignored
+					}
+    				++u8_i;
+                }				       
+				/*
+				uint8 au8_search_node[] = {0x00,
+    	                       0x32,
+    	                       0x64};
+
 
 				while(data[u32_index] != '\0')
     		    {
-    				doPoll(data[u32_index][0],
-    				       data[u32_index][1],
-    				       data[u32_index][2]);
-    				++u32_index;
-				}
-				sendEndPoll();
+					//u8_search = SNSL_SearchConfig(au8_search_node, polls);
+					outString("SEARCH:");
+					outUint8(u8_search);
+					outString(" for node: ");
+					outUint8(data[u32_index][0]);
+					outUint8(data[u32_index][1]);
+					outUint8(data[u32_index][2]);
+					outString("\n");
 
-<<<<<<< .mine
-                VDIP_CleanupDirList(data);
-                VDIP_Reset();
-            }
-        }
-    }
-    _LATB7 = 1;					//cut power to VDIP
-    _INT1IF = 0;
-=======
-				VDIP_CleanupDirList(data);
-				VDIP_Reset();
+					if (polls[u8_search].attempts <= u8_failureLimit) {
+	    				u8_pollReturn = doPoll(data[u32_index][0], data[u32_index][1], data[u32_index][2]);
+						if (u8_pollReturn == 0x01){
+							//polls[u8_search].attempts = 0;
+						}
+						else {
+							//polls[u8_search].attempts++;
+						}
+					}
+					else {
+						//log node was ignored
+					}
+    				++u32_index;
+				}*/
+				sendEndPoll();
+				//SNSL_PrintConfig();
+				u32_hopTimeout = 4;
+				SNSL_WriteConfig(u8_numHops, u32_hopTimeout, u8_failureLimit, polls);
+				
+				SNSL_PrintConfig();
+				free(polls);
+				//VDIP_CleanupDirList(data);
+				//VDIP_Reset();
 			}
 		}
 	}
@@ -301,7 +359,7 @@ void _ISRFAST _INT1Interrupt(void) {
 	SNSL_configLowPower();
 
 	_INT1IF = 0;
->>>>>>> .r32
+
 }
 
 void _ISRFAST _T3Interrupt (void) {
@@ -330,7 +388,7 @@ int main(void) {
 	configTimer23();
 
 	u8_numHops = 5;
-	u32_hopTimeout = 1000;
+	u32_hopTimeout = 100;
 	u8_failureLimit = 5;
 
 	if (!TEST_SWITCH) {

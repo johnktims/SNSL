@@ -11,8 +11,8 @@ int main(void)
 	
 	uint8 au8_search_node[] = {0x00,
     	                       0x32,
-    	                       0x64,
-    	                       0};
+    	                       0x64
+    	                			};
 	CONFIG_VDIP_POWER();
 	_LATB7 = 0;
 
@@ -46,8 +46,13 @@ int main(void)
     // Write the new config file out
     SNSL_WriteConfig(hops, timeout, max, polls);
 
-    SNSL_PrintConfig();
-    //VDIP_PrintListDir();
+	uint8 u8_i = 0;
+	while(u8_i < 20)
+	{
+    	SNSL_PrintConfig();
+		++u8_i;
+	}
+    	//VDIP_PrintListDir();
 
 	outString("FERTIG.\n");
 	while(1){}
