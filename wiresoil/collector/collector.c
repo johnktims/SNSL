@@ -11,6 +11,22 @@ uint32 u32_hopTimeout;
 
 union32 timer_max_val;
 
+typedef union _unionRTCC {
+    struct { //four 16 bit registers
+                uint8 yr;
+                uint8 null;
+                uint8 date;
+                uint8 month;
+                uint8 hour;
+                uint8 wday;
+                uint8 sec;
+                uint8 min;
+    }u8;
+    uint16 regs[4];
+}unionRTCC;
+
+unionRTCC u_RTCC;
+
 /****************************PIN CONFIGURATION****************************/
 
 #define SLEEP_INPUT _RB14
@@ -67,6 +83,68 @@ void startTimer23(void) {
 	_T3IP = 3;	//set timer interrupt priority (must be higher than sleep interrupt)
 	_T3IE = 1;	//enable timer interrupt
 	T2CONbits.TON = 1;	//start the timer
+}
+
+/****************************RTCC CONFIGURATION***************************/
+
+uint8 getBCDvalue(char *sz_1) {
+	char sz_buff[8];
+	uint16 u16_bin;
+	uint8 u8_bcd;
+	outString(sz_1);
+	inStringEcho(sz_buff, 7);
+	sscanf(sz_buff, "%d", (int *)&u16_bin);
+	u8_bcd = u16_bin/10;
+	u8_bcd = u8_bcd << 4;
+	u8_bcd = u8_bcd | (u16_bin % 10);
+	outChar1('\n');
+	return(u8_bcd);
+}
+
+uint8 parseVal(char *sz_1) {
+	uint16 u16_bin;
+	uint8 u8_bcd;
+	sscanf(sz_1, "%d", (int *)&u16_bin);
+	u8_bcd = u16_bin/10;
+	u8_bcd = u8_bcd << 4;
+	u8_bcd = u8_bcd | (u16_bin % 10);
+	return(u8_bcd);
+}
+
+void setRTCCVals(void) {
+	u_RTCC.u8.yr = parseVal("90");
+	u_RTCC.u8.month = parseVal("10");
+	u_RTCC.u8.date = parseVal("5");
+	u_RTCC.u8.wday = parseVal("5");
+	u_RTCC.u8.hour = parseVal("10");
+	u_RTCC.u8.min = parseVal("10");
+	u_RTCC.u8.sec = parseVal("0");
+}
+
+void getDateFromUser(void) {
+	u_RTCC.u8.yr = getBCDvalue("Enter year (0-99): ");
+	u_RTCC.u8.month = getBCDvalue("Enter month (1-12): ");
+	u_RTCC.u8.date = getBCDvalue("Enter day of month (1-31): ");
+	u_RTCC.u8.wday = getBCDvalue("Enter week day (0-6): ");
+	u_RTCC.u8.hour = getBCDvalue("Enter hour (0-23): ");
+	u_RTCC.u8.min = getBCDvalue("Enter min (0-59): ");
+	u_RTCC.u8.sec = getBCDvalue("Enter sec(0-59): ");
+}
+
+void setRTCC(void) {
+	uint8 u8_i;
+	__builtin_write_RTCWEN();
+	RCFGCALbits.RTCEN = 0;
+	RCFGCALbits.RTCPTR = 3;
+	for (u8_i = 0; u8_i < 4; u8_i++) RTCVAL = u_RTCC.regs[u8_i];
+	RCFGCALbits.RTCEN = 1;
+	RCFGCALbits.RTCWREN = 0;
+}
+
+void readRTCC(void) {
+	uint8 u8_i;
+	RCFGCALbits.RTCPTR = 3;
+	for (u8_i = 0; u8_i < 4; u8_i++) u_RTCC.regs[u8_i] = RTCVAL;
 }
 
 /****************************POLLING FUNCTIONS****************************/
@@ -277,16 +355,15 @@ void _ISRFAST _INT1Interrupt(void) {
 				//char **data = SNSL_ParseNodeNames();
 				polls = SNSL_MergeConfig();
 				SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
-				u32_hopTimeout = 300;
 				//SNSL_PrintConfig();
 
-				outString("PARSE CONFIG HEADER: hops:");
+				/*outString("PARSE CONFIG HEADER: hops:");
 				outUint8(u8_numHops);
 				outString("; hop_timeout:");
 				outUint32(u32_hopTimeout);
 				outString("; failure:");
 				outUint8(u8_failureLimit);
-				outString(";\n");
+				outString(";\n");*/
 
                 uint8 u8_i = 0;
 				while(polls[u8_i].attempts != LAST_POLL_FLAG)
@@ -295,16 +372,18 @@ void _ISRFAST _INT1Interrupt(void) {
         				u8_pollReturn = doPoll(polls[u8_i].name[0],
     				           polls[u8_i].name[1],
     				           polls[u8_i].name[2]);
-                        outString("\n\nPoll Return: ");
+                        /*outString("\n\nPoll Return: ");
                         outUint8(u8_pollReturn);
                         outString("\n");
                         outUint8(u8_stopPolling);
-                        outString("\n\n");
+                        outString("\n\n");*/
 						if (u8_pollReturn == 0x01){
 							polls[u8_i].attempts = 0;
 						}
 						else if (u8_pollReturn == 0x00) {
-							++polls[u8_i].attempts;
+							//++polls[u8_i].attempts;
+							polls[u8_i].attempts = polls[u8_i].attempts + 1;
+							outUint8(polls[u8_i].attempts);
 						}
 					}
 					else {
@@ -312,46 +391,16 @@ void _ISRFAST _INT1Interrupt(void) {
 					}
     				++u8_i;
                 }				       
-				/*
-				uint8 au8_search_node[] = {0x00,
-    	                       0x32,
-    	                       0x64};
-
-
-				while(data[u32_index] != '\0')
-    		    {
-					//u8_search = SNSL_SearchConfig(au8_search_node, polls);
-					outString("SEARCH:");
-					outUint8(u8_search);
-					outString(" for node: ");
-					outUint8(data[u32_index][0]);
-					outUint8(data[u32_index][1]);
-					outUint8(data[u32_index][2]);
-					outString("\n");
-
-					if (polls[u8_search].attempts <= u8_failureLimit) {
-	    				u8_pollReturn = doPoll(data[u32_index][0], data[u32_index][1], data[u32_index][2]);
-						if (u8_pollReturn == 0x01){
-							//polls[u8_search].attempts = 0;
-						}
-						else {
-							//polls[u8_search].attempts++;
-						}
-					}
-					else {
-						//log node was ignored
-					}
-    				++u32_index;
-				}*/
 				sendEndPoll();
-				//SNSL_PrintConfig();
-				u32_hopTimeout = 4;
+				outString("\n\n");
+				SNSL_PrintConfig();
+				outString("\n\n");
+				outUint8(polls[1].attempts);
+				outString("\n\n");
 				SNSL_WriteConfig(u8_numHops, u32_hopTimeout, u8_failureLimit, polls);
-				
+				outString("\n\n");
 				SNSL_PrintConfig();
 				free(polls);
-				//VDIP_CleanupDirList(data);
-				//VDIP_Reset();
 			}
 		}
 	}
@@ -383,6 +432,10 @@ int main(void) {
 	CONFIG_SLEEP_TIME();
 
 	CONFIG_INT1_TO_RP(14);
+	
+	__builtin_write_OSCCONL(OSCCON | 0x02);
+	setRTCCVals();
+	setRTCC();
 
 	u8_stopPolling = 0;
 	configTimer23();
@@ -407,6 +460,22 @@ int main(void) {
 		DELAY_MS(100);
 
 		if (u8_menuIn == '1') {
+			getDateFromUser();
+			//setRTCCVals();
+			outString("\n\nInitializing clock....");
+			setRTCC();
+			outString("\nTesting clock (press any key to end):\n");
+			while (!isCharReady()) {
+				if (RCFGCALbits.RTCSYNC) {
+					readRTCC();
+					char buff[8];
+					sprintf(buff, "%2x\n", u_RTCC.u8.sec);
+					outString(buff);
+					DELAY_MS(700);
+					/*uint16 tmp = (uint16) u_RTCC.u8.sec;
+					outUint161(tmp);*/
+				}
+			}
 		}
 		else if (u8_menuIn == '2') {
 			outString("\nThis value is the maximum number of hops from the collector to the furthest node\n");

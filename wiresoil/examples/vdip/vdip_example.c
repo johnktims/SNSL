@@ -11,8 +11,7 @@ int main(void)
 	
 	uint8 au8_search_node[] = {0x00,
     	                       0x32,
-    	                       0x64
-    	                			};
+    	                       0x64};
 	CONFIG_VDIP_POWER();
 	_LATB7 = 0;
 
@@ -34,12 +33,14 @@ int main(void)
     //VDIP_PrintListDir();
 
     SNSL_PrintConfig();
+    
+    SNSL_ParseConfigHeader(&hops, &timeout, &max);
 
     // Merge the Ascii and Binary files so that any new ascii values
     // are initialized to 0 and any existing names use their current
     // values in the binary config file.
     POLL *polls = SNSL_MergeConfig();
-    
+
     // Find a node and update its number of attempts
     uint8 u8_search = SNSL_SearchConfig(au8_search_node, polls);
     polls[u8_search].attempts += 25;
@@ -48,12 +49,11 @@ int main(void)
     SNSL_WriteConfig(hops, timeout, max, polls);
 
 	uint8 u8_i = 0;
-	while(u8_i < 20)
-	{
-    	SNSL_PrintConfig();
-		++u8_i;
-	}
-    	//VDIP_PrintListDir();
+	while(u8_i < 1)
+    {
+        SNSL_PrintConfig();
+        ++u8_i;
+    }
 
 	outString("FERTIG.\n");
 	while(1){}
