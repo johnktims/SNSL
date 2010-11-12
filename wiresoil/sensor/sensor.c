@@ -141,8 +141,8 @@ void _ISRFAST _INT1Interrupt (void) {
 
 /// Sleep Input pin configuration
 inline void CONFIG_SLEEP_INPUT()  {
-	CONFIG_RB14_AS_DIG_INPUT();     //use RB14 for mode input
-  	DISABLE_RB14_PULLUP();
+	CONFIG_RA2_AS_DIG_INPUT();     //use RA2 for mode input
+  	DISABLE_RA2_PULLUP();
   	DELAY_US(1);                    
 }
 

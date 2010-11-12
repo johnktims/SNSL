@@ -9,6 +9,7 @@
 #define MAX_NODE_NAME_LEN  (12+1)
 #define FILE_NODES         "NODES.TXT"
 #define FILE_CONFIG        "CONFIG.TXT"
+
 #define LAST_POLL_FLAG     0xff
 #define UNKNOWN_NODE       0xff
 
@@ -46,6 +47,19 @@ typedef struct _POLL
           attempts;
 }POLL;
 
+typedef union _unionRTCC {
+    struct { //four 16 bit registers
+                uint8 yr;
+                uint8 null;
+                uint8 date;
+                uint8 month;
+                uint8 hour;
+                uint8 wday;
+                uint8 sec;
+                uint8 min;
+    }u8;
+    uint16 regs[4];
+}unionRTCC;
 
 /***********************************************************
  * Function Definitions
@@ -61,5 +75,9 @@ POLL*   SNSL_MergeConfig(void);
 void    SNSL_PrintConfig(void);
 uint8   SNSL_SearchConfig(uint8 *, POLL *);
 void    SNSL_ParseConfigHeader(uint8 *, uint32 *, uint8 *);
+
+void    SNSL_logPollEvent(uint8 *, uint8);
+void    SNSL_logNodeSkipped(char *, uint8 *);
+void    SNSL_logResponseFailure(char *, uint8 *);
 
 #endif // SNSL_H

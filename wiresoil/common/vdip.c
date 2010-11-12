@@ -28,7 +28,7 @@
 
 // Remove leading newline uint8acters
 #define REMOVE_LEADING_NEWLINES(c) \
-    while((c) == LF)               \
+    while((c) == CR)               \
     {                              \
         c = SPI_ReadWait();        \
     }
@@ -192,7 +192,7 @@ uint8** VDIP_ListDir(void)
     while(c != EOC)
     {
         // File names end with a line feed uint8acter
-        if(c == LF)
+        if(c == CR)
         {
             data[u32_row][u32_col] = '\0';
             ++u32_row;
@@ -259,7 +259,7 @@ uint32 VDIP_DirItemCount(void)
     {
         // All file names are delimited by carriage
         // returns, so just count them.
-        if(c == LF)
+        if(c == CR)
         {
             ++u32_items;
         }
@@ -342,7 +342,7 @@ uint8* VDIP_ReadFile(const uint8 *name)
            u32_index = 0;
     uint8 *data = (uint8*)malloc(u32_bytes);
 
-    //printf("ReadFile->FileSize = `%u`\n", (unsigned)u32_bytes);
+    printf("ReadFile->FileSize = `%u`\n", (unsigned)u32_bytes);
 
     SPI_Write(RD);
     SPI_Write(SPACE);

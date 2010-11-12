@@ -310,6 +310,9 @@ void SNSL_WriteConfig(uint8 hops, uint32 timeout_per_hop,
     // Each entry needs four bytes(3 for name and 1 for access attempts)
     // plus the three config bytes in the header
     uint8 *sz_out = (uint8 *)malloc(sizeof(uint8)*((u8_polls*4)+HEADER_LEN));
+    outString("WriteConfig: (u8_polls*4)+HEADER_LEN = ");
+    outUint8((u8_polls*4)+HEADER_LEN);
+    outChar('\n');
 
     // Save config options
     sz_out[u32_index]   = hops;
@@ -326,17 +329,17 @@ void SNSL_WriteConfig(uint8 hops, uint32 timeout_per_hop,
         sz_out[++u32_index] = polls[u8_i].name[1];
         sz_out[++u32_index] = polls[u8_i].name[2];
         sz_out[++u32_index] = polls[u8_i].attempts;
-        outString("\n\nAttempts:\n");
-        outUint8(sz_out[u32_index]);
+        //outString("\n\nAttempts:\n");
+        //outUint8(sz_out[u32_index]);
         ++u8_i;
     }
 
     ++u32_index;
-    u8_i = 0;
+    /*u8_i = 0;
     while (u8_i < u32_index){
         outUint8(sz_out[u8_i]);
         u8_i++;
-    }
+    }*/
     
     VDIP_WriteFileN(FILE_CONFIG, sz_out, u32_index);
     free(sz_out);
@@ -421,7 +424,7 @@ POLL* SNSL_MergeConfig(void)
 
     // Copy the node names into the POLL array
     uint8 u8_i, u8_j, u8_search;
-    POLL *polls = (POLL *)malloc(sizeof(POLL)*(u8_nodes+1));
+    POLL *polls = (POLL *)malloc(sizeof(POLL)*(u8_nodes));
     for(u8_i = 0; u8_i < u8_nodes; ++u8_i)
     {
         for(u8_j = 0; u8_j < 3; ++u8_j)
@@ -429,7 +432,7 @@ POLL* SNSL_MergeConfig(void)
             polls[u8_i].name[u8_j] = nodes[u8_i][u8_j];
         }
         polls[u8_i].name[u8_j] = NULL;
-        
+
         u8_search = SNSL_SearchConfig(polls[u8_i].name, old_config);
         polls[u8_i].attempts = 0;
         if(u8_search != UNKNOWN_NODE)
@@ -510,4 +513,72 @@ void SNSL_configLowPower(void)
 	//CNPU2 = 0xFFFF;
 	//CNPU1 = CN15 -> CN0 (don't want pull-up on CN1 and CN0)
 	//CNPU1 = 0xFFFC;
-}  
+}
+
+//**********************************************************
+/**
+ * @brief Write event log entry for a polling event (either start or stop)
+ * @param[in] The struct of uint8 timestamp values
+ * @param[in] The event type flag (0 == poll stopped, 1 == poll started)
+ */
+//**********************************************************
+
+void SNSL_logPollEvent(uint8 *ts, uint8 type) {
+    //[d/m/y h:m:s] Polling Started
+    //[d/m/y h:m:s] Polling Stopped
+    
+    uint8 log_format0[] = "[%02x/%02x/%02x %02x:%02x:%02x] Polling Started\n";
+    uint8 log_format1[] = "[%02x/%02x/%02x %02x:%02x:%02x] Polling Stopped\n";
+    uint8 log_out[50];
+
+    if (type == 0x00) {
+        sprintf(log_out, log_format0,
+            ts[0], ts[1], ts[2], ts[3], ts[4], ts[5]);
+    }
+    else if (type == 0x01) {
+        sprintf(log_out, log_format1,
+            ts[0], ts[1], ts[2], ts[3], ts[4], ts[5]);
+    }
+    
+    log_out[49] = 0x0;
+    outString(log_out);
+    VDIP_WriteFile("LOG.TXT", log_out);
+}
+
+//**********************************************************
+/**
+ * @brief Write event log entry for a node ignored due to too many response failures
+ * @param[in] The 3-byte name of the node
+ * @param[in] The struct of uint8 timestamp values
+ */
+//**********************************************************
+
+void SNSL_logNodeSkipped(char *nodeAddr, uint8 *ts) {
+    uint8 log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Ignored (Too Many Failures)\n";
+    uint8 log_out[60];
+    
+    sprintf(log_out, log_format,
+        ts[0], ts[1], ts[2], ts[3], ts[4], ts[5], nodeAddr[0], nodeAddr[1], nodeAddr[2]);
+    
+    outString(log_out);
+    VDIP_WriteFile("LOG.TXT", log_out);    
+}
+
+//**********************************************************
+/**
+ * @brief Write event log entry for a node that failed to respond
+ * @param[in] The 3-byte name of the node
+ * @param[in] The struct of uint8 timestamp values
+ */
+//**********************************************************
+
+void SNSL_logResponseFailure(char *nodeAddr, uint8 *ts) {
+    uint8 log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Failed to Respond\n";
+    uint8 log_out[60];
+    
+    sprintf(log_out, log_format,
+        ts[0], ts[1], ts[2], ts[3], ts[4], ts[5], nodeAddr[0], nodeAddr[1], nodeAddr[2]);
+    
+    outString(log_out);
+    VDIP_WriteFile("LOG.TXT", log_out);  
+}

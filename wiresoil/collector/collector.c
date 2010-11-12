@@ -11,20 +11,6 @@ uint32 u32_hopTimeout;
 
 union32 timer_max_val;
 
-typedef union _unionRTCC {
-    struct { //four 16 bit registers
-                uint8 yr;
-                uint8 null;
-                uint8 date;
-                uint8 month;
-                uint8 hour;
-                uint8 wday;
-                uint8 sec;
-                uint8 min;
-    }u8;
-    uint16 regs[4];
-}unionRTCC;
-
 unionRTCC u_RTCC;
 
 /****************************PIN CONFIGURATION****************************/
@@ -278,8 +264,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 		
 	
 	    uint8 psz_fmt[] = "%02X%02X%02X,"                   // node address
-	                      /*"%c%c%c%c%c%c%c%c%c%c%c%c,"   	// node name*/
-						  "%s,"
+						  "%s,"                             // node name
 	                      "%02x/%02x/%02x %02x:%02x:%02x,"  // timestamp [MM/DD/YY HH:MM:SS]
 	                      "%c%c%c%c%c%c%c%c%c%c,"           // temp samples
 	                      "%c%c%c%c%c%c%c%c,"               // redox samples
@@ -289,7 +274,6 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 	    uint8 psz_out[70];
 	    sprintf(psz_out, psz_fmt,
 	        c_ad1, c_ad2, c_ad3,
-	        /*p[26],p[27],p[28],p[29],p[30],p[31],p[32],p[33],p[34],p[35],p[36],p[37],*/
 			psz_node_name,
 	        p[0],p[1],p[2],p[3],p[4],p[5],
 	        p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],
@@ -312,6 +296,11 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 	else if (!SLEEP_TIME) {
 		//record node response failure
 		//do not record failure if in mesh setup mode (SLEEP_PIN == HIGH)
+        readRTCC();
+        uint8 tmp[6] = {u_RTCC.u8.month, u_RTCC.u8.date, u_RTCC.u8.yr, u_RTCC.u8.hour,
+                        u_RTCC.u8.min, u_RTCC.u8.sec};
+        char tmp2[3] = {c_ad1, c_ad2, c_ad3};
+        SNSL_logResponseFailure(tmp2, tmp);   //log node failed to respond*/
 		return 0x00;
 	}
 	else {
@@ -355,6 +344,7 @@ void _ISRFAST _INT1Interrupt(void) {
 				//char **data = SNSL_ParseNodeNames();
 				polls = SNSL_MergeConfig();
 				SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
+				u32_hopTimeout = 300;
 				//SNSL_PrintConfig();
 
 				/*outString("PARSE CONFIG HEADER: hops:");
@@ -366,6 +356,12 @@ void _ISRFAST _INT1Interrupt(void) {
 				outString(";\n");*/
 
                 uint8 u8_i = 0;
+                
+                readRTCC();
+                uint8 tmp[6] = {u_RTCC.u8.month, u_RTCC.u8.date, u_RTCC.u8.yr, u_RTCC.u8.hour,
+                                u_RTCC.u8.min, u_RTCC.u8.sec};
+                SNSL_logPollEvent(tmp, 0x00);  //log polling started
+                
 				while(polls[u8_i].attempts != LAST_POLL_FLAG)
 				{
     				if (polls[u8_i].attempts <= u8_failureLimit) {
@@ -388,6 +384,11 @@ void _ISRFAST _INT1Interrupt(void) {
 					}
 					else {
 						//log node was ignored
+                        readRTCC();
+                        uint8 tmp1[6] = {u_RTCC.u8.month, u_RTCC.u8.date, u_RTCC.u8.yr, u_RTCC.u8.hour,
+                                        u_RTCC.u8.min, u_RTCC.u8.sec};
+                        uint8 tmp2[3] = {polls[u8_i].name[0], polls[u8_i].name[1], polls[u8_i].name[2]};
+                        SNSL_logNodeSkipped(tmp2, tmp1);
 					}
     				++u8_i;
                 }				       
@@ -401,6 +402,11 @@ void _ISRFAST _INT1Interrupt(void) {
 				outString("\n\n");
 				SNSL_PrintConfig();
 				free(polls);
+				
+				readRTCC();
+                uint8 tmp3[6] = {u_RTCC.u8.month, u_RTCC.u8.date, u_RTCC.u8.yr, u_RTCC.u8.hour,
+                                u_RTCC.u8.min, u_RTCC.u8.sec};
+                SNSL_logPollEvent(tmp3, 0x01);  //log polling stopped*/
 			}
 		}
 	}

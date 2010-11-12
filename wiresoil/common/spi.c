@@ -213,10 +213,10 @@ uint8 SPI_ReadWait(void)
     // uint8acters just overwrite each other, and
     // since a space is the last uint8acter before
     // the EOS, none of the output shows up.
-    if(spiData == 0x0d)
+    /*if(spiData == 0x0d)
     {
         spiData = '\n';
-    }
+    } TED == IDIOT*/
 
     return spiData;
 }
