@@ -35,11 +35,10 @@ uint8** SNSL_ParseNodeNames(void)
     for(; u32_index < u32_size; ++u32_index)
     {
         // Take care of linux and windows newlines
-        //
-        // Fun fact: Our SPI module automatically
-        // converts \r to \n, so we'll have two
-        // successive '\n's if the file was created
-        // with Windows.
+        if(psz_data[u32_index] == '\r')
+        {
+            continue;
+        }    
         if(psz_data[u32_index] == '\n' ||
            psz_data[u32_index] == '\r' ||
            (u32_index == u32_size-1 &&
@@ -424,7 +423,7 @@ POLL* SNSL_MergeConfig(void)
 
     // Copy the node names into the POLL array
     uint8 u8_i, u8_j, u8_search;
-    POLL *polls = (POLL *)malloc(sizeof(POLL)*(u8_nodes));
+    POLL *polls = (POLL *)malloc(sizeof(POLL)*(u8_nodes+1));
     for(u8_i = 0; u8_i < u8_nodes; ++u8_i)
     {
         for(u8_j = 0; u8_j < 3; ++u8_j)
