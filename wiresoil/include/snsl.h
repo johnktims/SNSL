@@ -80,4 +80,6 @@ void    SNSL_logPollEvent(unionRTCC *, uint8);
 void    SNSL_logNodeSkipped(uint8, uint8, uint8, unionRTCC *);
 void    SNSL_logResponseFailure(uint8, uint8, uint8, unionRTCC *);
 
+uint32  SNSL_pow(uint8, uint8);
+
 #endif // SNSL_H

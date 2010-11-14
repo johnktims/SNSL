@@ -189,7 +189,7 @@ void SNSL_ParseConfigHeader(uint8 *hops, uint32 *timeout_per_hop,
 
     *hops             = sz_data[0];
 
-    *timeout_per_hop = ((uint32)sz_data[1] << 24);
+    *timeout_per_hop  = ((uint32)sz_data[1] << 24);
     *timeout_per_hop |= ((uint32)sz_data[2] << 16);
     *timeout_per_hop |= ((uint32)sz_data[3] << 8);
     *timeout_per_hop |=  (uint32)sz_data[4];
@@ -587,4 +587,39 @@ void SNSL_logResponseFailure(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u
     
     outString(log_out);
     VDIP_WriteFile("LOG.TXT", log_out);  
+}
+
+uint32 SNSL_pow(uint8 base, uint8 power) {
+    uint32 u32_retVal = base;
+    if (power == 0) {
+        return 1;
+    }    
+    uint8 i;
+    for ( i = 1; i < power; i++) {
+        u32_retVal *= base;
+    }
+    
+    return u32_retVal;
+}
+
+uint32 SNSL_Atoi(uint8 *str)
+{
+    
+    uint32 u32_return;
+    uint8 u8_i = 0,
+          u8_j = 0;
+
+    // Count numbers in array
+    while(str[++u8_i]);
+    
+    --u8_i;
+    u32_return = 0;
+    while(u8_i > 0)
+    {
+        u32_return += (str[u8_j]-0x30)*(SNSL_pow(10,u8_i));
+        --u8_i;
+        ++u8_j;
+    }
+    u32_return += (str[u8_j] - 0x30)*(SNSL_pow(10, u8_i));
+    return (uint32)u32_return;
 }

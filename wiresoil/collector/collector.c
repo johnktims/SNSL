@@ -2,12 +2,13 @@
 #include "packet.h"
 #include "snsl.h"
 
-/****************************GLOBAL VARIABLES****************************/
+#include <stdio.h>
+#include <stdlib.h>
 
-uint8 u8_failureLimit;
-uint8 u8_stopPolling;
-uint8 u8_numHops;
+/****************************GLOBAL VARIABLES****************************/
+uint8 u8_numHops, u8_failureLimit;
 uint32 u32_hopTimeout;
+uint8 u8_stopPolling;
 
 union32 timer_max_val;
 
@@ -321,8 +322,6 @@ void sendEndPoll(void) {
 /****************************INTERRUPT HANDLERS****************************/
 
 void _ISRFAST _INT1Interrupt(void) {
-	uint32 u32_index = 0;
-
 	configHighPower();
 
 	_LATB7 = 0;		//enable power to VDIP
@@ -439,12 +438,11 @@ int main(void) {
 	u8_stopPolling = 0;
 	configTimer23();
 
-	u8_numHops = 5;
-	u32_hopTimeout = 100;
-	u8_failureLimit = 5;
-
 	if (!TEST_SWITCH) {
-		uint8 u8_menuIn;
+		uint8 u8_menuIn,
+		      u8_numHops,
+		      u8_failureLimit;
+		uint32 u32_hopTimeout;
 
 		outString("\n\n\n");
 		outString("Setup Mode:\n\n");
@@ -455,17 +453,27 @@ int main(void) {
 		outString("4. Set node failure limit\n");
 		outString("5. Reset node ignore list\n");
 		outString("--> ");
-		u8_menuIn = inChar();
-		DELAY_MS(100);
+		u8_menuIn = inCharEcho();
+		//DELAY_MS(100);
 
-		if (u8_menuIn == '1') {
+		outString("\n\nInitilizing Setup. Please wait....\n\n");
+		VDIP_Init();
+
+        //POLL *polls = SNSL_ParseConfig(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
+        SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
+        POLL *polls = SNSL_MergeConfig();
+        printf("U8_HOPS = %d; TIMEOUT = %lu; THRESH = %u;\n", u8_numHops, u32_hopTimeout, u8_failureLimit);
+		if (u8_menuIn == '1')
+        {
 			getDateFromUser();
 			//setRTCCVals();
 			outString("\n\nInitializing clock....");
 			setRTCC();
 			outString("\nTesting clock (press any key to end):\n");
-			while (!isCharReady()) {
-				if (RCFGCALbits.RTCSYNC) {
+			while(!isCharReady())
+    	    {
+				if(RCFGCALbits.RTCSYNC)
+    			{
 					readRTCC();
 					char buff[8];
 					sprintf(buff, "%2x\n", u_RTCC.u8.sec);
@@ -477,22 +485,31 @@ int main(void) {
 			}
 		}
 		else if (u8_menuIn == '2') {
-			outString("\nThis value is the maximum number of hops from the collector to the furthest node\n");
+    		outString("\nThis value is the maximum number of hops from the collector to the farthest node\n");
 			outString("\nCurrent number of hops: ");
 			outUint8Decimal(u8_numHops);
-			outString("\nNew number of hops: ");
-			char hops_buff[3];
-			inStringEcho(hops_buff, 2);
+			outString("\nNew number of hops[1-255]: ");
+			char hops_buff[4];
+			inStringEcho(hops_buff, 3);
 			outString("\nNew number of hops saved.");
+			u8_numHops = (uint8)SNSL_Atoi(hops_buff);
+			
 			WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
 		}
 		else if (u8_menuIn == '3') {
 			outString("\nThis value is the timeout per network hop (default is 300ms).\n");
-			outString("\nCurrent timeout value: ");
-			outUint8Decimal(u32_hopTimeout);
-			outString("\nNew timeout value (milliseconds): ");
-			char timeout_buff[4];
-			inStringEcho(timeout_buff, 3);
+			printf("\nCurrent timeout value: %lu\n", u32_hopTimeout);
+
+			outString("New timeout value (milliseconds)[300-9999]: ");
+			uint8 timeout_buff[32];
+			inStringEcho(timeout_buff, 4);
+            u32_hopTimeout = SNSL_Atoi(timeout_buff);
+            /***NOTE**
+            for some reason, the SNSL_Atoi does not work for > 6 digits. The 
+            return value seems to overflow to the max int size. This isn't a
+            problem due to the constraints set to 4 digits, so it's being
+            ignored*/
+    		printf("Timeout: %lu\n", u32_hopTimeout);
 			outString("\nNew timeout value saved.");
 			WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
 		}
@@ -500,17 +517,27 @@ int main(void) {
 			outString("\nThis value is the number of failures to respond a sensor node has before it will be ignored.\n");
 			outString("\nCurrent failure limit: ");
 			outUint8Decimal(u8_failureLimit);
-			outString("\nNew failure limit: ");
-			char failure_buff[3];
-			inStringEcho(failure_buff, 2);
+			outString("\nNew failure limit [1-255]: ");
+			char failure_buff[4];
+			inStringEcho(failure_buff, 3);
 			outString("\nNew failure limit saved.");
+			u8_failureLimit = (uint8)SNSL_Atoi(failure_buff);
 			WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
 		}
-		else if (u8_menuIn == '4') {
+		else if (u8_menuIn == '5') {
 			outString("Resetting node ignore list........");
-			outString("\nNode ignore list reset completed.");
-			WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
+			uint8 u8_i = 0;
+			while(polls[u8_i].attempts != LAST_POLL_FLAG)
+			{
+    			polls[u8_i].attempts = 0;
+    			++u8_i;
+            }
+            outString("\nNode ignore list reset completed.");
+            WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();         
 		}
+		
+		SNSL_WriteConfig(u8_numHops, u32_hopTimeout, u8_failureLimit, polls);
+		free(polls);
 	}
 	else {
 		DELAY_MS(500);		//wait for SLEEP_INPUT to stabilize before attaching interrupt
@@ -520,7 +547,7 @@ int main(void) {
 		_INT1EP = 0;		//set rising edge (positive) trigger 
 		_INT1IE = 1;		//enable the interrupt
 
-		_LATB7 = 1;					//cut power to VDIP*/
+		_LATB7 = 1;					//cut power to VDIP
 
 		while (1) {
 			SLEEP();
