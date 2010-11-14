@@ -76,8 +76,8 @@ void    SNSL_PrintConfig(void);
 uint8   SNSL_SearchConfig(uint8 *, POLL *);
 void    SNSL_ParseConfigHeader(uint8 *, uint32 *, uint8 *);
 
-void    SNSL_logPollEvent(uint8 *, uint8);
-void    SNSL_logNodeSkipped(char *, uint8 *);
-void    SNSL_logResponseFailure(char *, uint8 *);
+void    SNSL_logPollEvent(unionRTCC *, uint8);
+void    SNSL_logNodeSkipped(uint8, uint8, uint8, unionRTCC *);
+void    SNSL_logResponseFailure(uint8, uint8, uint8, unionRTCC *);
 
 #endif // SNSL_H

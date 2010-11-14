@@ -342,7 +342,7 @@ uint8* VDIP_ReadFile(const uint8 *name)
            u32_index = 0;
     uint8 *data = (uint8*)malloc(u32_bytes);
 
-    printf("ReadFile->FileSize = `%u`\n", (unsigned)u32_bytes);
+    //printf("ReadFile->FileSize = `%u`\n", (unsigned)u32_bytes);
 
     SPI_Write(RD);
     SPI_Write(SPACE);

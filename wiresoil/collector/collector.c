@@ -297,10 +297,8 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3) {
 		//record node response failure
 		//do not record failure if in mesh setup mode (SLEEP_PIN == HIGH)
         readRTCC();
-        uint8 tmp[6] = {u_RTCC.u8.month, u_RTCC.u8.date, u_RTCC.u8.yr, u_RTCC.u8.hour,
-                        u_RTCC.u8.min, u_RTCC.u8.sec};
-        char tmp2[3] = {c_ad1, c_ad2, c_ad3};
-        SNSL_logResponseFailure(tmp2, tmp);   //log node failed to respond*/
+        
+        SNSL_logResponseFailure(c_ad1, c_ad2, c_ad3, &u_RTCC);
 		return 0x00;
 	}
 	else {
@@ -385,28 +383,23 @@ void _ISRFAST _INT1Interrupt(void) {
 					else {
 						//log node was ignored
                         readRTCC();
-                        uint8 tmp1[6] = {u_RTCC.u8.month, u_RTCC.u8.date, u_RTCC.u8.yr, u_RTCC.u8.hour,
-                                        u_RTCC.u8.min, u_RTCC.u8.sec};
-                        uint8 tmp2[3] = {polls[u8_i].name[0], polls[u8_i].name[1], polls[u8_i].name[2]};
-                        SNSL_logNodeSkipped(tmp2, tmp1);
+                        SNSL_logNodeSkipped(polls[u8_i].name[0], polls[u8_i].name[1], polls[u8_i].name[2], &u_RTCC);
 					}
     				++u8_i;
                 }				       
 				sendEndPoll();
-				outString("\n\n");
+				/*outString("\n\n");
 				SNSL_PrintConfig();
 				outString("\n\n");
 				outUint8(polls[1].attempts);
 				outString("\n\n");
 				SNSL_WriteConfig(u8_numHops, u32_hopTimeout, u8_failureLimit, polls);
 				outString("\n\n");
-				SNSL_PrintConfig();
+				SNSL_PrintConfig();*/
 				free(polls);
 				
 				readRTCC();
-                uint8 tmp3[6] = {u_RTCC.u8.month, u_RTCC.u8.date, u_RTCC.u8.yr, u_RTCC.u8.hour,
-                                u_RTCC.u8.min, u_RTCC.u8.sec};
-                SNSL_logPollEvent(tmp3, 0x01);  //log polling stopped*/
+                SNSL_logPollEvent(&u_RTCC, 0x01);  //log polling stopped*/
 			}
 		}
 	}

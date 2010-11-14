@@ -309,9 +309,9 @@ void SNSL_WriteConfig(uint8 hops, uint32 timeout_per_hop,
     // Each entry needs four bytes(3 for name and 1 for access attempts)
     // plus the three config bytes in the header
     uint8 *sz_out = (uint8 *)malloc(sizeof(uint8)*((u8_polls*4)+HEADER_LEN));
-    outString("WriteConfig: (u8_polls*4)+HEADER_LEN = ");
-    outUint8((u8_polls*4)+HEADER_LEN);
-    outChar('\n');
+    //outString("WriteConfig: (u8_polls*4)+HEADER_LEN = ");
+    //outUint8((u8_polls*4)+HEADER_LEN);
+    //outChar('\n');
 
     // Save config options
     sz_out[u32_index]   = hops;
@@ -522,7 +522,8 @@ void SNSL_configLowPower(void)
  */
 //**********************************************************
 
-void SNSL_logPollEvent(uint8 *ts, uint8 type) {
+void SNSL_logPollEvent(unionRTCC *u_RTCC, uint8 type)
+{
     //[d/m/y h:m:s] Polling Started
     //[d/m/y h:m:s] Polling Stopped
     
@@ -532,11 +533,13 @@ void SNSL_logPollEvent(uint8 *ts, uint8 type) {
 
     if (type == 0x00) {
         sprintf(log_out, log_format0,
-            ts[0], ts[1], ts[2], ts[3], ts[4], ts[5]);
+            u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
+            u_RTCC->u8.min, u_RTCC->u8.sec);
     }
     else if (type == 0x01) {
         sprintf(log_out, log_format1,
-            ts[0], ts[1], ts[2], ts[3], ts[4], ts[5]);
+            u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
+            u_RTCC->u8.min, u_RTCC->u8.sec);
     }
     
     log_out[49] = 0x0;
@@ -552,13 +555,14 @@ void SNSL_logPollEvent(uint8 *ts, uint8 type) {
  */
 //**********************************************************
 
-void SNSL_logNodeSkipped(char *nodeAddr, uint8 *ts) {
+void SNSL_logNodeSkipped(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
+{
     uint8 log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Ignored (Too Many Failures)\n";
     uint8 log_out[60];
     
     sprintf(log_out, log_format,
-        ts[0], ts[1], ts[2], ts[3], ts[4], ts[5], nodeAddr[0], nodeAddr[1], nodeAddr[2]);
-    
+        u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
+                        u_RTCC->u8.min, u_RTCC->u8.sec, c_ad1, c_ad2, c_ad3);
     outString(log_out);
     VDIP_WriteFile("LOG.TXT", log_out);    
 }
@@ -571,12 +575,15 @@ void SNSL_logNodeSkipped(char *nodeAddr, uint8 *ts) {
  */
 //**********************************************************
 
-void SNSL_logResponseFailure(char *nodeAddr, uint8 *ts) {
+//void SNSL_logResponseFailure(char *nodeAddr, uint8 *ts) {
+void SNSL_logResponseFailure(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
+{
     uint8 log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Failed to Respond\n";
     uint8 log_out[60];
     
     sprintf(log_out, log_format,
-        ts[0], ts[1], ts[2], ts[3], ts[4], ts[5], nodeAddr[0], nodeAddr[1], nodeAddr[2]);
+        u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
+                        u_RTCC->u8.min, u_RTCC->u8.sec, c_ad1, c_ad2, c_ad3);
     
     outString(log_out);
     VDIP_WriteFile("LOG.TXT", log_out);  
