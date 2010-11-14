@@ -17,7 +17,7 @@
 /***********************************************************
  * Common Characters
  **********************************************************/
- 
+
 // Carriage Return
 #define CR 0xd
 
@@ -80,13 +80,14 @@ void   VDIP_WriteFileN(const uint8 *,
                        uint32);
 
 uint8* VDIP_ReadFile(const uint8 *);
-void VDIP_DeleteFile(const uint8 *);
+void   VDIP_DeleteFile(const uint8 *);
 
+uint8  VDIP_FileExists(const uint8 *);
 uint32 VDIP_FileSize(const uint8 *);
 uint32 VDIP_DirItemCount(void);
 
 uint8** VDIP_ListDir(void);
-void   VDIP_CleanupDirList(uint8 **);
+void    VDIP_CleanupDirList(uint8 **);
 
 void VDIP_PrintListDir(void);
 

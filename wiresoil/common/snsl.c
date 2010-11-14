@@ -23,7 +23,12 @@
 //**********************************************************
 uint8** SNSL_ParseNodeNames(void)
 {
-    uint8 *psz_data   = VDIP_ReadFile(FILE_NODES);
+    if(!VDIP_FileExists(FILE_NODES))
+    {
+        SNSL_CreateDefaultNodes();
+    }
+
+    uint8 *psz_data  = VDIP_ReadFile(FILE_NODES);
     uint32 u32_size  = VDIP_FileSize(FILE_NODES),
            u32_index = 0;
 
@@ -38,7 +43,7 @@ uint8** SNSL_ParseNodeNames(void)
         if(psz_data[u32_index] == '\r')
         {
             continue;
-        }    
+        }
         if(psz_data[u32_index] == '\n' ||
            psz_data[u32_index] == '\r' ||
            (u32_index == u32_size-1 &&
@@ -74,20 +79,14 @@ uint8** SNSL_ParseNodeNames(void)
 
     // Fill the array
     int u8_hex;
-    uint8 sz_hex[2];
-    uint8 u8_index,
+    uint8 sz_hex[2],
+          u8_index,
           u8_node = 0;
+
     for(u32_index = 0; u32_index < u32_size; u32_index += u32_delimiter_width)
     {
         for(u8_index = 0; u8_index < 3; ++u8_index)
         {
-            // Convert the ascii representation of the nodes numbers into hex
-            //
-            // Note: This was written to get rid of the need for sscanf. It will
-            //       NOT work with letters at this point!
-            //u8_hex = ((psz_data[u32_index]-0x30)*0x10) + (psz_data[u32_index+1]-0x30);
-            //u32_index += 2;
-
             sz_hex[0] = (uint8)psz_data[u32_index++];
             sz_hex[1] = (uint8)psz_data[u32_index++];
             sscanf(sz_hex, "%x", &u8_hex);
@@ -109,25 +108,30 @@ uint8** SNSL_ParseNodeNames(void)
  * @todo Clean this crap up
  */
 
-void doInsert(UFDATA* p_ufdata, uint8* sz_1){
-  uint16 u16_j = 0;
-      while (*sz_1) {  //copy data
+void doInsert(UFDATA* p_ufdata, uint8* sz_1)
+{
+    uint16 u16_j = 0;
+    // Copy data
+    while (*sz_1)
+    {
         p_ufdata->dat.node_name[u16_j] = *sz_1;
-        sz_1++; u16_j++;
-      } //end while
-      p_ufdata->dat.node_name[u16_j] = *sz_1; //write null
+        ++sz_1; ++u16_j;
+    } //end while
+    p_ufdata->dat.node_name[u16_j] = *sz_1; //write null
 }
 
-void doCommit(UFDATA* p_ufdata) {
-  union32 u_memaddr;
-  u_memaddr.u32 = DATA_FLASH_PAGE;
-  doWritePageFlash(u_memaddr, (uint8 *) p_ufdata, FLASH_DATA_SIZE);
+void doCommit(UFDATA* p_ufdata)
+{
+    union32 u_memaddr;
+    u_memaddr.u32 = DATA_FLASH_PAGE;
+    doWritePageFlash(u_memaddr, (uint8 *) p_ufdata, FLASH_DATA_SIZE);
 }
 
-void doRead(UFDATA* p_ufdata) {
-  union32 u_memaddr;
-  u_memaddr.u32 = DATA_FLASH_PAGE;
-  doReadPageFlash(u_memaddr, (uint8 *) p_ufdata, FLASH_DATA_SIZE);
+void doRead(UFDATA* p_ufdata)
+{
+    union32 u_memaddr;
+    u_memaddr.u32 = DATA_FLASH_PAGE;
+    doReadPageFlash(u_memaddr, (uint8 *) p_ufdata, FLASH_DATA_SIZE);
 }
 
 //**********************************************************
@@ -185,6 +189,11 @@ void SNSL_PrintNodeName(void)
 void SNSL_ParseConfigHeader(uint8 *hops, uint32 *timeout_per_hop,
                        uint8 *max_attempts)
 {
+    if(!VDIP_FileExists(FILE_CONFIG))
+    {
+        SNSL_CreateDefaultConfig();
+    }
+
     uint8 *sz_data    = VDIP_ReadFile(FILE_CONFIG);
 
     *hops             = sz_data[0];
@@ -193,11 +202,11 @@ void SNSL_ParseConfigHeader(uint8 *hops, uint32 *timeout_per_hop,
     *timeout_per_hop |= ((uint32)sz_data[2] << 16);
     *timeout_per_hop |= ((uint32)sz_data[3] << 8);
     *timeout_per_hop |=  (uint32)sz_data[4];
-    
+
     *max_attempts = sz_data[5];
     free(sz_data);
 }
-    
+
 
 //**********************************************************
 /**
@@ -214,6 +223,11 @@ void SNSL_ParseConfigHeader(uint8 *hops, uint32 *timeout_per_hop,
 POLL* SNSL_ParseConfig(uint8 *hops, uint32 *timeout_per_hop,
                        uint8 *max_attempts)
 {
+    if(!VDIP_FileExists(FILE_CONFIG))
+    {
+        SNSL_CreateDefaultConfig();
+    }
+
     POLL LAST_POLL;
     LAST_POLL.attempts  = LAST_POLL_FLAG;
 
@@ -288,10 +302,6 @@ POLL* SNSL_ParseConfig(uint8 *hops, uint32 *timeout_per_hop,
 void SNSL_WriteConfig(uint8 hops, uint32 timeout_per_hop,
                       uint8 max_attempts, POLL *polls)
 {
-    // If the file doesn't exist, the
-    // attempt to delete will hang    
-    VDIP_WriteFile(FILE_CONFIG, "junk");
-
     VDIP_DeleteFile(FILE_CONFIG);
 
     uint8  u8_i = 0;
@@ -339,7 +349,7 @@ void SNSL_WriteConfig(uint8 hops, uint32 timeout_per_hop,
         outUint8(sz_out[u8_i]);
         u8_i++;
     }*/
-    
+
     VDIP_WriteFileN(FILE_CONFIG, sz_out, u32_index);
     free(sz_out);
 }
@@ -456,7 +466,7 @@ POLL* SNSL_MergeConfig(void)
     //outString("SNSL_MergeConfig: Finished\n");
     VDIP_CleanupDirList(nodes);
     free(old_config);
-    
+
     return polls;
 }
 
@@ -485,7 +495,7 @@ void SNSL_PrintConfig(void)
         ++u8_i;
     }
 	free(polls);
-}  
+}
 
 
 //**********************************************************
@@ -494,8 +504,7 @@ void SNSL_PrintConfig(void)
  * @note  This is a rewrite of the function from pic24_util.c. This will only work for the PIC24FJ64GA102.
  */
 //**********************************************************
-
-void SNSL_configLowPower(void)
+void SNSL_ConfigLowPower(void)
 {
 	//Config all digital I/O pins as inputs
 	//TRISx regs control I/O status: 1 = input 0 = output
@@ -516,17 +525,18 @@ void SNSL_configLowPower(void)
 
 //**********************************************************
 /**
- * @brief Write event log entry for a polling event (either start or stop)
+ * @brief Write event log entry for a polling event (either
+ *        start or stop)
  * @param[in] The struct of uint8 timestamp values
  * @param[in] The event type flag (0 == poll stopped, 1 == poll started)
  */
 //**********************************************************
 
-void SNSL_logPollEvent(unionRTCC *u_RTCC, uint8 type)
+void SNSL_LogPollEvent(uint8 type, unionRTCC *u_RTCC)
 {
     //[d/m/y h:m:s] Polling Started
     //[d/m/y h:m:s] Polling Stopped
-    
+
     uint8 log_format0[] = "[%02x/%02x/%02x %02x:%02x:%02x] Polling Started\n";
     uint8 log_format1[] = "[%02x/%02x/%02x %02x:%02x:%02x] Polling Stopped\n";
     uint8 log_out[50];
@@ -541,7 +551,7 @@ void SNSL_logPollEvent(unionRTCC *u_RTCC, uint8 type)
             u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
             u_RTCC->u8.min, u_RTCC->u8.sec);
     }
-    
+
     log_out[49] = 0x0;
     outString(log_out);
     VDIP_WriteFile("LOG.TXT", log_out);
@@ -549,77 +559,103 @@ void SNSL_logPollEvent(unionRTCC *u_RTCC, uint8 type)
 
 //**********************************************************
 /**
- * @brief Write event log entry for a node ignored due to too many response failures
+ * @brief Write event log entry for a node ignored due to
+ *        too many response failures
  * @param[in] The 3-byte name of the node
  * @param[in] The struct of uint8 timestamp values
  */
 //**********************************************************
 
-void SNSL_logNodeSkipped(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
+void SNSL_LogNodeSkipped(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
 {
     uint8 log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Ignored (Too Many Failures)\n";
     uint8 log_out[60];
-    
+
     sprintf(log_out, log_format,
         u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
                         u_RTCC->u8.min, u_RTCC->u8.sec, c_ad1, c_ad2, c_ad3);
     outString(log_out);
-    VDIP_WriteFile("LOG.TXT", log_out);    
+    VDIP_WriteFile("LOG.TXT", log_out);
 }
 
 //**********************************************************
 /**
- * @brief Write event log entry for a node that failed to respond
+ * @brief Write event log entry for a node that failed to
+ *        respond
  * @param[in] The 3-byte name of the node
  * @param[in] The struct of uint8 timestamp values
  */
 //**********************************************************
 
-//void SNSL_logResponseFailure(char *nodeAddr, uint8 *ts) {
-void SNSL_logResponseFailure(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
+void SNSL_LogResponseFailure(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
 {
     uint8 log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Failed to Respond\n";
     uint8 log_out[60];
-    
+
     sprintf(log_out, log_format,
         u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
                         u_RTCC->u8.min, u_RTCC->u8.sec, c_ad1, c_ad2, c_ad3);
-    
+
     outString(log_out);
-    VDIP_WriteFile("LOG.TXT", log_out);  
+    VDIP_WriteFile("LOG.TXT", log_out);
 }
 
-uint32 SNSL_pow(uint8 base, uint8 power) {
+uint32 SNSL_Pow(uint8 base, uint8 power)
+{
     uint32 u32_retVal = base;
     if (power == 0) {
         return 1;
-    }    
+    }
     uint8 i;
     for ( i = 1; i < power; i++) {
         u32_retVal *= base;
     }
-    
+
     return u32_retVal;
 }
 
 uint32 SNSL_Atoi(uint8 *str)
 {
-    
+
     uint32 u32_return;
     uint8 u8_i = 0,
           u8_j = 0;
 
     // Count numbers in array
     while(str[++u8_i]);
-    
     --u8_i;
+
     u32_return = 0;
     while(u8_i > 0)
     {
-        u32_return += (str[u8_j]-0x30)*(SNSL_pow(10,u8_i));
+        u32_return += (str[u8_j]-0x30)*(SNSL_Pow(10,u8_i));
         --u8_i;
         ++u8_j;
     }
-    u32_return += (str[u8_j] - 0x30)*(SNSL_pow(10, u8_i));
+    u32_return += (str[u8_j] - 0x30)*(SNSL_Pow(10, u8_i));
     return (uint32)u32_return;
+}
+
+
+//**********************************************************
+/**
+ * @brief Create a config file with sane default values
+ */
+//**********************************************************
+void SNSL_CreateDefaultConfig(void)
+{
+    POLL LAST_POLL;
+    LAST_POLL.attempts = LAST_POLL_FLAG;
+    SNSL_WriteConfig(4, (uint32)300, 16, &LAST_POLL);
+}
+
+
+//**********************************************************
+/**
+ * @brief Create a config file with sane default values
+ */
+//**********************************************************
+void SNSL_CreateDefaultNodes(void)
+{
+    // Create a blank file
 }

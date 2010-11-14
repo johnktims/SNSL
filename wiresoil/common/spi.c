@@ -203,7 +203,7 @@ void SPI_Init(void)
 uint8 SPI_ReadWait(void)
 {
 	uint8 spiData;
-	
+
 	while (SPI_Xfer(DIR_SPIREAD, &spiData))
     {
     	//outChar(spiData);
@@ -218,6 +218,7 @@ uint8 SPI_ReadWait(void)
         spiData = '\n';
     } TED == IDIOT*/
 
+    // printf("`%c`:`%x`\n", spiData, spiData);
     return spiData;
 }
 
@@ -256,8 +257,8 @@ void SPI_WriteStr(const uint8 *spiData)
     while(*spiData)
     {
         SPI_Write(*(spiData++));
-    }    
-    
+    }
+
 	// Carriage Return - every command needs one.
 	SPI_Write(0x0d);
 }
@@ -275,8 +276,8 @@ void SPI_WriteStrN(const uint8 *spiData, uint32 u32_size)
     for(u32_i = 0; u32_i < u32_size; ++u32_i)
     {
         SPI_Write(spiData[u32_i]);
-    }    
-    
+    }
+
 	// Carriage Return - every command needs one.
 	SPI_Write(0x0d);
 }

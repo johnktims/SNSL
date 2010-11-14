@@ -16,7 +16,7 @@
 
 /***********************************************************
  * RTSP Structures
- **********************************************************/ 
+ **********************************************************/
 typedef struct _REC
 {
   uint8 node_name[MAX_NODE_NAME_LEN];
@@ -40,7 +40,7 @@ typedef union _UFDATA
 
 /***********************************************************
  * Structures
- **********************************************************/ 
+ **********************************************************/
 typedef struct _POLL
 {
     uint8 name[MAX_NODE_ADDR_LEN],
@@ -64,10 +64,15 @@ typedef union _unionRTCC {
 /***********************************************************
  * Function Definitions
  **********************************************************/
+void    SNSL_ConfigLowPower(void);
+
 uint8** SNSL_ParseNodeNames(void);
 void    SNSL_GetNodeName(UFDATA *);
 void    SNSL_SetNodeName(uint8 *);
 void    SNSL_PrintNodeName(void);
+
+void    SNSL_CreateDefaultConfig(void);
+void    SNSL_CreateDefaultNodes(void);
 
 POLL*   SNSL_ParseConfig(uint8 *, uint32 *, uint8 *);
 void    SNSL_WriteConfig(uint8, uint32, uint8, POLL *);
@@ -76,10 +81,11 @@ void    SNSL_PrintConfig(void);
 uint8   SNSL_SearchConfig(uint8 *, POLL *);
 void    SNSL_ParseConfigHeader(uint8 *, uint32 *, uint8 *);
 
-void    SNSL_logPollEvent(unionRTCC *, uint8);
-void    SNSL_logNodeSkipped(uint8, uint8, uint8, unionRTCC *);
-void    SNSL_logResponseFailure(uint8, uint8, uint8, unionRTCC *);
+void    SNSL_LogPollEvent(uint8, unionRTCC *);
+void    SNSL_LogNodeSkipped(uint8, uint8, uint8, unionRTCC *);
+void    SNSL_LogResponseFailure(uint8, uint8, uint8, unionRTCC *);
 
-uint32  SNSL_pow(uint8, uint8);
+uint32  SNSL_Pow(uint8, uint8);
+uint32  SNSL_Atoi(uint8 *);
 
 #endif // SNSL_H

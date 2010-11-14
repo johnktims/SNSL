@@ -26,13 +26,17 @@
 #define VDIP_DEBUG_OUT(msg)
 #endif
 
-// Remove leading newline uint8acters
+
 #define REMOVE_LEADING_NEWLINES(c) \
     while((c) == CR)               \
     {                              \
         c = SPI_ReadWait();        \
     }
-
+#define END_COMMAND(c) \
+    while((c) != EOC)               \
+    {                              \
+        c = SPI_ReadWait();        \
+    }
 
 /***********************************************************
  * Function Definitions
@@ -51,7 +55,7 @@ void VDIP_Init(void)
     SPI_Init();
 
     VDIP_Reset();
-	
+
     // Syncs VDIP with PIC
     VDIP_Sync();
 
@@ -81,7 +85,7 @@ uint8 VDIP_Sync(void)
 	DELAY_MS(10);
 
     uint8 c = SPI_ReadWait();
-    
+
     REMOVE_LEADING_NEWLINES(c);
 
     // Wait for VDIP to send an 'E'
@@ -106,14 +110,14 @@ uint8 VDIP_SCS(void)
 {
     VDIP_DEBUG_OUT("VDIP_SCS: Started. Setting"
 	          " Short Command Set");
-	          
+
 	//VDIP_Sync();
 
 	SPI_WriteStr(SCS);
 	uint8 c = SPI_ReadWait();
-	
+
 	REMOVE_LEADING_NEWLINES(c);
-	
+
 	if(c == EOC)
 	{
 	    VDIP_DEBUG_OUT("VDIP_SCS: Finished."
@@ -158,17 +162,17 @@ uint8** VDIP_ListDir(void)
     VDIP_DEBUG_OUT("VDIP_ListDir: Started.");
 
 	//VDIP_Sync();
-	    
+
     // Get the number of items in the directory
     uint32 u32_items = VDIP_DirItemCount();
 
     // Allocate memory for the array of pointers
     uint8 **data = (uint8**)malloc(sizeof(uint8*) * (u32_items + 1));
-    
+
     // Null terminate the array so it will be easy to traverse
     data[u32_items] = '\0';
     uint32 u32_index = 0;
-    
+
     // Allocate memory for the filenames. This could have
     // been done in one call, but contiguous memory space
     // may be sparse.
@@ -239,7 +243,7 @@ void VDIP_CleanupDirList(uint8 **data)
 uint32 VDIP_DirItemCount(void)
 {
     VDIP_DEBUG_OUT("VDIP_DirItemCount: Started.");
-    
+
 	VDIP_Sync();
 
     // Request a directory listing
@@ -247,13 +251,13 @@ uint32 VDIP_DirItemCount(void)
     SPI_Write(CR);
 
     uint8 c = SPI_ReadWait();
-    
+
     REMOVE_LEADING_NEWLINES(c);
-    
+
     // This will contain the number of files and
     // folders in the current directory.
     uint32 u32_items = 0;
-    
+
     // Get the file names from the VDIP
     while(c != EOC)
     {
@@ -281,7 +285,7 @@ uint32 VDIP_DirItemCount(void)
 uint32 VDIP_FileSize(const uint8 *name)
 {
     VDIP_DEBUG_OUT("VDIP_FileSize: Started.");
-    
+
 	//VDIP_Sync();
 
     // Make a DIR request
@@ -326,6 +330,44 @@ uint32 VDIP_FileSize(const uint8 *name)
 
 //**********************************************************
 /**
+ * @brief Determine whether or not a file exists
+ * @param[in] name The name of the file
+ * @return A boolean indication the existence of the file.
+ */
+//**********************************************************
+uint8 VDIP_FileExists(const uint8 *name)
+{
+    VDIP_DEBUG_OUT("VDIP_FileExists: Started.");
+
+    // Make a DIR request
+    SPI_Write(DIR);
+    SPI_Write(SPACE);
+    SPI_WriteStr(name);
+
+    // The returned data will have this format:
+    // \r\rCF, where CF means Command Failed.
+
+    // Parse the string
+    uint8 c = SPI_ReadWait();
+
+    REMOVE_LEADING_NEWLINES(c);
+    if(c == 'C')
+    {
+        c = SPI_ReadWait();
+        if(c == 'F')
+        {
+            return 0x0;
+        }
+    }
+
+    END_COMMAND(c);
+    VDIP_DEBUG_OUT("VDIP_FileExists: Finished.");
+    return 0x1;
+}
+
+
+//**********************************************************
+/**
  * @brief Read a file into a string
  * @param[in] name The name of the file
  * @return uint8* A string containing the contents
@@ -335,7 +377,7 @@ uint32 VDIP_FileSize(const uint8 *name)
 uint8* VDIP_ReadFile(const uint8 *name)
 {
     VDIP_DEBUG_OUT("VDIP_ReadFile: Started.");
-	
+
 	//VDIP_Sync();
 
     uint32 u32_bytes = VDIP_FileSize(name) + 1,
@@ -347,11 +389,11 @@ uint8* VDIP_ReadFile(const uint8 *name)
     SPI_Write(RD);
     SPI_Write(SPACE);
     SPI_WriteStr(name);
-    
+
     uint8 c = SPI_ReadWait();
-    
+
     REMOVE_LEADING_NEWLINES(c);
-    
+
     while(c != EOC)
     {
         data[u32_index++] = c;
@@ -444,10 +486,13 @@ void VDIP_WriteFileN(const uint8 *name, const uint8 *data, uint32 u32_size)
 void VDIP_DeleteFile(const uint8 *name)
 {
     VDIP_DEBUG_OUT("VDIP_DeleteFile: Started.");
-    
-    SPI_Write(DLF);
-    SPI_Write(SPACE);
-    SPI_WriteStr(name);
+
+    if(VDIP_FileExists(name))
+    {
+        SPI_Write(DLF);
+        SPI_Write(SPACE);
+        SPI_WriteStr(name);
+    }
 
     VDIP_DEBUG_OUT("VDIP_DeleteFile: Finished.");
 }

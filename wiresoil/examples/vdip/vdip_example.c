@@ -3,11 +3,13 @@
 #include "vdip.h"
 #include "snsl.h"
 
+
 int main(void)
 {
     __builtin_write_OSCCONL(OSCCON | 0x02);
     configBasic(HELLO_MSG);
-	outString("Hello world");
+    
+	//outString("Hello world");
 	
 	uint8 au8_search_node[] = {0x00,
     	                       0x32,
@@ -18,6 +20,31 @@ int main(void)
 	//config SPI for VDIP1
 	VDIP_Init();
 
+    VDIP_PrintListDir();
+    
+    printf("FS: %d\n", VDIP_FileExists("NODES.TXT"));
+    printf("FS: %u\n", VDIP_FileExists("NODES1.TXT"));
+    printf("FS: %d\n", VDIP_FileExists("NODES.TXT"));
+    
+    printf("FS: %d\n", VDIP_FileExists(FILE_NODES));
+    printf("FS: %d\n", VDIP_FileExists(FILE_CONFIG));
+    if(!VDIP_FileExists(FILE_CONFIG))
+    {
+        puts("File Created");
+        SNSL_CreateDefaultConfig();
+    }
+    else
+    {
+        puts("File Exists!");
+    }    
+
+    VDIP_PrintListDir();
+        
+    SNSL_PrintConfig();
+    puts("BEREIT");
+    while(1){}
+    return 0;
+    
     /*
 	VDIP_PrintListDir();
 
