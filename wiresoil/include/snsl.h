@@ -62,7 +62,7 @@ typedef union _unionRTCC {
 }unionRTCC;
 
 /***********************************************************
- * Function Definitions
+ * Function Headers
  **********************************************************/
 void    SNSL_ConfigLowPower(void);
 
@@ -83,7 +83,8 @@ void    SNSL_ParseConfigHeader(uint8 *, uint32 *, uint8 *);
 
 void    SNSL_LogPollEvent(uint8, unionRTCC *);
 void    SNSL_LogNodeSkipped(uint8, uint8, uint8, unionRTCC *);
-void    SNSL_LogResponseFailure(uint8, uint8, uint8, unionRTCC *);
+void    SNSL_LogResponseFailure(uint8, uint8, uint8, uint8, unionRTCC *);
+void    SNSL_LogPollingStats(unionRTCC *, uint8, uint8, uint8);
 
 uint32  SNSL_Pow(uint8, uint8);
 uint32  SNSL_Atoi(uint8 *);

@@ -330,6 +330,42 @@ uint32 VDIP_FileSize(const uint8 *name)
 
 //**********************************************************
 /**
+ * @brief Determine whether or not a disk exists
+ * @return A boolean indication the existence of the disk.
+ */
+//**********************************************************
+uint8 VDIP_DiskExists(void)
+{
+    VDIP_DEBUG_OUT("VDIP_DiskExists: Started.");
+
+    // Make a DIR request
+    SPI_Write(DIR);
+    SPI_Write(CR);
+
+    // The returned data will have this format:
+    // \r\rND, where ND means No Disk.
+
+    // Parse the string
+    uint8 c = SPI_ReadWait();
+
+    REMOVE_LEADING_NEWLINES(c);
+    if(c == 'N')
+    {
+        c = SPI_ReadWait();
+        if(c == 'D')
+        {
+            return 0x0;
+        }
+    }
+
+    END_COMMAND(c);
+    VDIP_DEBUG_OUT("VDIP_DiskExists: Finished.");
+    return 0x1;
+}
+
+
+//**********************************************************
+/**
  * @brief Determine whether or not a file exists
  * @param[in] name The name of the file
  * @return A boolean indication the existence of the file.

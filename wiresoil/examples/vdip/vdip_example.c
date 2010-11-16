@@ -19,9 +19,10 @@ int main(void)
 
 	//config SPI for VDIP1
 	VDIP_Init();
+	printf("ND: %d\n", VDIP_DiskExists());
 
     VDIP_PrintListDir();
-    
+
     printf("FS: %d\n", VDIP_FileExists("NODES.TXT"));
     printf("FS: %u\n", VDIP_FileExists("NODES1.TXT"));
     printf("FS: %d\n", VDIP_FileExists("NODES.TXT"));

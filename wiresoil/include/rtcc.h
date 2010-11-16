@@ -1,25 +1,19 @@
 #ifndef RTCC_H
 #define RTCC_H
 
-typedef union _u_RTCC
-{
-	struct
-	{
-		uint8 yr,
-			  null,
-			  date,
-			  month,
-			  hour,
-			  wday,
-			  sec,
-			  min;
-	}u8;
-	uint16 regs[4];
-}u_RTCC;
+//for unionRTCC
+#include "snsl.h"
 
-uint8 RTCC_GetBCDValue(char *);
-u_RTCC RTCC_GetDateFromUser(void);
-void RTCC_Set(u_RTCC);
-u_RTCC RTCC_Get(void);
-void RTCC_Print(u_RTCC);
+/***********************************************************
+ * Function Headers
+ **********************************************************/
+
+uint8   RTCC_GetBCDValue(char *);
+uint8   RTCC_ParseVal(char *);
+void    RTCC_GetDateFromUser(unionRTCC *);
+void    RTCC_SetDefaultVals(unionRTCC *);
+void    RTCC_Set(unionRTCC *);
+void    RTCC_Read(unionRTCC *);
+void    RTCC_Print(unionRTCC *);
+
 #endif //RTCC_H

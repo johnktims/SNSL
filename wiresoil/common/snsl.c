@@ -25,7 +25,7 @@ uint8** SNSL_ParseNodeNames(void)
 {
     if(!VDIP_FileExists(FILE_NODES))
     {
-        SNSL_CreateDefaultNodes();
+        return NULL;
     }
 
     uint8 *psz_data  = VDIP_ReadFile(FILE_NODES);
@@ -587,18 +587,47 @@ void SNSL_LogNodeSkipped(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTC
  */
 //**********************************************************
 
-void SNSL_LogResponseFailure(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
+void SNSL_LogResponseFailure(uint8 attempts ,uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
 {
-    uint8 log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Failed to Respond\n";
-    uint8 log_out[60];
+    uint8 log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Failed to Respond (Failure #%u)\n";
+    uint8 log_out[80];
 
     sprintf(log_out, log_format,
         u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
-                        u_RTCC->u8.min, u_RTCC->u8.sec, c_ad1, c_ad2, c_ad3);
+                        u_RTCC->u8.min, u_RTCC->u8.sec, c_ad1, c_ad2, c_ad3, attempts);
 
     outString(log_out);
     VDIP_WriteFile("LOG.TXT", log_out);
 }
+
+//**********************************************************
+/**
+ * @brief Write polling summary event log
+ * @param[in] The struct of uint8 timestamp values
+ */
+//**********************************************************
+
+void SNSL_LogPollingStats(unionRTCC *u_RTCC, uint8 polls, uint8 ignored, uint8 failed)
+{
+    uint8 log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Polling Statistics: %u Polled Successfully | %u Failed to Respond | %u Ignored.\n";
+    uint8 log_out[120];
+
+    sprintf(log_out, log_format,
+        u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
+                        u_RTCC->u8.min, u_RTCC->u8.sec, polls, failed, ignored);
+
+    outString(log_out);
+    VDIP_WriteFile("LOG.TXT", log_out);
+}
+
+//**********************************************************
+/**
+ * @brief Function to calculate exponential equation
+ * @return evaluation of base^power
+ * @param[in] Base number
+ * @param[in] Power to raise base to
+ */
+//**********************************************************
 
 uint32 SNSL_Pow(uint8 base, uint8 power)
 {
@@ -613,6 +642,14 @@ uint32 SNSL_Pow(uint8 base, uint8 power)
 
     return u32_retVal;
 }
+
+//**********************************************************
+/**
+ * @brief Function convert string of character to integer value
+ * @return integer conversion of string
+ * @param[in] String of characters to convert
+ */
+//**********************************************************
 
 uint32 SNSL_Atoi(uint8 *str)
 {
@@ -647,15 +684,4 @@ void SNSL_CreateDefaultConfig(void)
     POLL LAST_POLL;
     LAST_POLL.attempts = LAST_POLL_FLAG;
     SNSL_WriteConfig(4, (uint32)300, 16, &LAST_POLL);
-}
-
-
-//**********************************************************
-/**
- * @brief Create a config file with sane default values
- */
-//**********************************************************
-void SNSL_CreateDefaultNodes(void)
-{
-    // Create a blank file
 }
