@@ -4,7 +4,7 @@
 #include "rtcc.h"
 #include <string.h>
 
-#define SLEEP_INPUT _RB14
+#define SLEEP_INPUT _RB9
 #define TEST_SWITCH _RB8
 
 /****************************GLOBAL VARIABLES****************************/
@@ -16,8 +16,8 @@ unionRTCC u_RTCC;
 /// Sleep Input pin configuration
 inline void CONFIG_SLEEP_INPUT() 
 {
-    CONFIG_RA2_AS_DIG_INPUT();     //use RA2 for mode input
-    DISABLE_RA2_PULLUP();
+    CONFIG_RB9_AS_DIG_INPUT();     //use RB9 as sleep input
+    DISABLE_RB9_PULLUP();
     DELAY_US(1);
 }
 
@@ -33,16 +33,19 @@ void configHighPower(void) {
     CONFIG_SLEEP_INPUT();
     CONFIG_TEST_SWITCH();
     
-    CONFIG_INT1_TO_RP(14);
+    CONFIG_INT1_TO_RP(9);   //connect interrupt to sleep input
 }    
 
 /****************************POLLING FUNCTIONS****************************/
 void parseInput(void){
+    outString("Polled\n");
     uint8 u8_c;
     UFDATA fdata;
     SNSL_GetNodeName(&fdata);
 
     u8_c = inChar2();
+    outChar(u8_c);
+    outChar('\n');
     if (u8_c != MONITOR_REQUEST_DATA_STATUS) return;
 
     while (!RCFGCALbits.RTCSYNC)
@@ -87,9 +90,11 @@ void _ISRFAST _INT1Interrupt (void) {
         while (SLEEP_INPUT)
         {
             _DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
+            outString("Waiting for char\n");
             if (isCharReady2())
             {
                 _DOZEN = 0;
+                outString("Responding...\n");
                 parseInput();  //satisfy the polling
             }
         }
@@ -112,13 +117,18 @@ int main(void)
     CONFIG_SLEEP_INPUT();
     CONFIG_TEST_SWITCH();
 
-    CONFIG_INT1_TO_RP(14);
+    CONFIG_INT1_TO_RP(9);   //connect interrupt to sleep pin
 
     __builtin_write_OSCCONL(OSCCON | 0x02);
     RTCC_SetDefaultVals(&u_RTCC);
     RTCC_Set(&u_RTCC);
     
-    remaining_polls = 0x05;
+    char defaultName[] = "default";
+    SNSL_SetNodeName(defaultName);
+    
+    remaining_polls = 0x00;
+    
+    outString("Hello World\n");
 
     while (1) {
         if (!TEST_SWITCH)

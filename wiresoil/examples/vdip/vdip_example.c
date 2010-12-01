@@ -19,7 +19,19 @@ int main(void)
 
 	//config SPI for VDIP1
 	VDIP_Init();
-	printf("ND: %d\n", VDIP_DiskExists());
+	
+	/*uint8 **polls = SNSL_ParseNodeNames();
+	outString("Node Adresses Loaded:\n");
+	printf("%2x%2x%2x \n", polls[0][0], polls[0][1], polls[0][2]);
+	printf("%2x%2x%2x \n", polls[1][0], polls[1][1], polls[1][2]);*/
+	
+	uint8 hops, thresh;
+	uint32 timeout;
+	
+	SNSL_ParseConfigHeader(&hops, &timeout, &thresh);
+	printf("Config Values: \n Mesh Hops: %u \n Timeout: %lu \n Failure Limit: %u \n", hops, timeout, thresh);
+	
+	/*printf("ND: %d\n", VDIP_DiskExists());
 
     VDIP_PrintListDir();
 
@@ -46,7 +58,7 @@ int main(void)
     while(1){}
     return 0;
     
-    /*
+    
 	VDIP_PrintListDir();
 
     VDIP_WriteFile("LOG1.TXT", "This is a test.");
@@ -54,7 +66,7 @@ int main(void)
     VDIP_PrintListDir();
     
     VDIP_DeleteFile("LOG1.TXT");
-    */
+    
 
     uint8 hops=2, max = 5;
     uint32 timeout=4;
@@ -83,7 +95,7 @@ int main(void)
         ++u8_i;
     }
 
-	outString("FERTIG.\n");
+	outString("FERTIG.\n");*/
 	while(1){}
 	return 0;
 }
