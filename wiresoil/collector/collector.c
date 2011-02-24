@@ -19,9 +19,9 @@ unionRTCC u_RTCC;
 
 /****************************PIN CONFIGURATION****************************/
 #define SLEEP_INPUT _RB14
-#define TEST_SWITCH _RB8
+#define TEST_SWITCH _RA2
 #define VDIP_POWER	_RB7
-#define SLEEP_TIME	_RA2
+#define SLEEP_TIME	_RB8
 
 /// Sleep Input pin configuration
 inline void CONFIG_SLEEP_INPUT(void)

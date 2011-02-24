@@ -9,14 +9,19 @@
 #define TEST_SWITCH _RB8
 #define ANALOG_POWER _RB7
 
-/****************************GLOBAL VARIABLES****************************/
-uint8 remaining_polls;
+inline void CONFIG_ANALOG_POWER() {
+    CONFIG_RB7_AS_DIG_OD_OUTPUT();
+    DELAY_US(1);
+}    
 
-unionRTCC u_RTCC;
+/****************************GLOBAL VARIABLES****************************/
+//uint8 remaining_polls;
+
+//unionRTCC u_RTCC;
 
 /****************************PIN CONFIGURATION****************************/
 /// Sleep Input pin configuration
-inline void CONFIG_SLEEP_INPUT() 
+/*inline void CONFIG_SLEEP_INPUT() 
 {
     CONFIG_RB9_AS_DIG_INPUT();     //use RB9 as sleep input
     DISABLE_RB9_PULLUP();
@@ -31,51 +36,23 @@ inline void CONFIG_TEST_SWITCH()
     DELAY_US(1);
 }
 
-// Analog Power pin configuration
-inline void CONFIG_ANALOG_POWER() {
-    CONFIG_RB7_AS_DIG_OD_OUTPUT();
-    DELAY_US(1);
-}
-
-//Analog input pin configuration
-inline void CONFIG_ANALOG_INPUTS() {
-    //configure ADC pins
-    CONFIG_AN0_AS_ANALOG();
-    CONFIG_AN1_AS_ANALOG();
-    CONFIG_AN2_AS_ANALOG();
-    CONFIG_AN3_AS_ANALOG();
-    CONFIG_AN4_AS_ANALOG();
-    CONFIG_AN5_AS_ANALOG();
-    CONFIG_AN9_AS_ANALOG();
-    CONFIG_AN10_AS_ANALOG();
-    CONFIG_AN11_AS_ANALOG();
-    CONFIG_AN12_AS_ANALOG();
-    DELAY_US(1);
-}    
-
 void configHighPower(void) {
     CONFIG_SLEEP_INPUT();
     CONFIG_TEST_SWITCH();
     
     CONFIG_INT1_TO_RP(9);   //connect interrupt to sleep input
-    
-    CONFIG_ANALOG_POWER();
-    CONFIG_ANALOG_INPUTS();
-    _LATB7 = 0;     //enable power to analog circuitry
 }    
 
 /****************************POLLING FUNCTIONS****************************/
-void parseInput(void){
-    //_LATB7 = 0;         //enable analog circuitry (0 == on | 1 == off)
-    DELAY_MS(5);
+/*void parseInput(void){
     float af_probeData[10];
     
     sampleProbes(af_probeData);
     
-    /*int i;
+    int i;
     for (i=0; i<10; i++) {
         printf("%f\n", af_probeData[i]);
-    }*/
+    }
     
     outString("Polled\n");
     uint8 u8_c;
@@ -120,7 +97,7 @@ void parseInput(void){
 }
 
 /****************************INTERRUPT HANDLERS****************************/
-void _ISRFAST _INT1Interrupt (void) {
+/*void _ISRFAST _INT1Interrupt (void) {
     configHighPower();
     
     U2MODEbits.UARTEN = 1;                    // enable UART RX/TX
@@ -146,36 +123,69 @@ void _ISRFAST _INT1Interrupt (void) {
     U2STAbits.UTXEN = 0;                      //disable the transmitter
     SNSL_ConfigLowPower();
     _INT1IF = 0;		//clear interrupt flag before exiting
-    _LATB7 = 1;     //cut power to analog circuitry
-}
+}*/
 
 /****************************MAIN******************************************/
 int main(void)
 {
     //SNSL_ConfigLowPower();
     configClock();
-    configDefaultUART(DEFAULT_BAUDRATE); //this is UART2
-    configUART2(DEFAULT_BAUDRATE);
-
-    CONFIG_SLEEP_INPUT();
-    CONFIG_TEST_SWITCH();
-    CONFIG_ANALOG_POWER();
-    CONFIG_ANALOG_INPUTS();
-
-    CONFIG_INT1_TO_RP(9);   //connect interrupt to sleep pin
+    configDefaultUART(19200); //this is UART1
+    configUART2(19200);
     
-    __builtin_write_OSCCONL(OSCCON | 0x02);
+    outString("power on\n\n");
+
+    /*CONFIG_SLEEP_INPUT();
+    CONFIG_TEST_SWITCH();
+
+    CONFIG_INT1_TO_RP(9);   //connect interrupt to sleep pin*/
+    
+    CONFIG_ANALOG_POWER();
+    
+    //configure ADC pins
+    CONFIG_AN0_AS_ANALOG();
+    CONFIG_AN1_AS_ANALOG();
+    CONFIG_AN2_AS_ANALOG();
+    CONFIG_AN3_AS_ANALOG();
+    CONFIG_AN4_AS_ANALOG();
+    CONFIG_AN5_AS_ANALOG();
+    CONFIG_AN9_AS_ANALOG();
+    CONFIG_AN10_AS_ANALOG();
+    CONFIG_AN11_AS_ANALOG();
+    CONFIG_AN12_AS_ANALOG();
+    DELAY_MS(1000);
+
+    /*__builtin_write_OSCCONL(OSCCON | 0x02);
     RTCC_SetDefaultVals(&u_RTCC);
     RTCC_Set(&u_RTCC);
     
     char defaultName[] = "default";
     SNSL_SetNodeName(defaultName);
     
-    remaining_polls = 0x00;
-    
+    remaining_polls = 0x00;*/
+    _LATB7 = 0; //enable power to analog circuitry
     outString("Hello World\n");
 
+    float af_probeData[10];
+    uint8 u8_menuIn;
+
     while (1) {
+        //u8_menuIn = inChar();
+        outString("press any key to read ADC again\n");
+
+        sampleProbes(af_probeData);
+        
+        int i;
+       /* for (i=0; i<10; i++) {
+            printf("%f\n", af_probeData[i]);
+        }*/
+        
+        //outString("setting _LATB7 = 1\n");
+        u8_menuIn = inChar();
+        DELAY_MS(500);
+        
+    }
+    /*while (1) {
         if (!TEST_SWITCH)
         {
             _INT1IE = 0;		//make sure the interrupt is disabled
@@ -241,6 +251,6 @@ int main(void)
                 SLEEP();         //macro for asm("pwrsav #0")
             }
         }
-    }    
+    }    */
     return 0;
 }
