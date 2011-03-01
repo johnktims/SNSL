@@ -14,6 +14,12 @@ uint8 remaining_polls;
 
 unionRTCC u_RTCC;
 
+typedef union _FLOAT
+{
+    float f;
+    char s[sizeof(float)];
+} FLOAT;
+
 /****************************PIN CONFIGURATION****************************/
 /// Sleep Input pin configuration
 inline void CONFIG_SLEEP_INPUT() 
@@ -72,6 +78,14 @@ void parseInput(void){
     
     sampleProbes(af_probeData);
     
+    FLOAT probes[10];
+    
+    int x;
+    for(x = 0; x < 10; ++x)
+    {
+        probes[x].f = af_probeData[x];
+    }    
+    
     outString("Polled\n");
     uint8 u8_c;
     UFDATA fdata;
@@ -92,7 +106,7 @@ void parseInput(void){
     //packet structure: 0x1E(1)|Packet Length(1)|Packet Type(1)|Remaining polls(1)|Timestamp(6)|Temp data(10)|Redox data(8)|
     //					Reference Voltage(2)|Node Name(12 max)
     SendPacketHeader();
-    outChar2(28+strlen(fdata.dat.node_name));
+    outChar2(2 + 6 + sizeof(float)*5 + sizeof(float)*4 + sizeof(float) + strlen(fdata.dat.node_name));
     outChar2(APP_SMALL_DATA);
     outChar2(remaining_polls);	//remaining polls
     //outString("MDYHMS");
@@ -102,9 +116,18 @@ void parseInput(void){
     outChar2(u_RTCC.u8.hour);
     outChar2(u_RTCC.u8.min);
     outChar2(u_RTCC.u8.sec);
-    outString2("10tempData");
-    outString2("8redData");
-    outString2("rV");
+    
+    int y;
+    for(x = 0; x < 10; ++x)
+    {
+        for(y = 0; y < sizeof(float); ++y)
+        {
+            outChar2(probes[x].s[y]);
+        }
+    }        
+    //outString2("10tempData");
+    //outString2("8redData");
+    //outString2("rV");
     outString2(fdata.dat.node_name);
     //outString2("12_node_test");
 
@@ -143,12 +166,7 @@ void _ISRFAST _INT1Interrupt (void) {
     _INT1IF = 0;		//clear interrupt flag before exiting
     _LATB7 = 1;     //cut power to analog circuitry
 }
-
-typedef union _FLOAT
-{
-    float f;
-    char s[sizeof(float)];
-} FLOAT;    
+    
 
 /****************************MAIN******************************************/
 int main(void)
@@ -158,6 +176,7 @@ int main(void)
     configDefaultUART(DEFAULT_BAUDRATE); //this is UART2
     configUART2(DEFAULT_BAUDRATE);
 
+    /*
     FLOAT result;
     result.f = -123.4567;
     printf("Result: `%s`\n", result.s);
@@ -165,7 +184,7 @@ int main(void)
     FLOAT change;
     memcpy(change.s, result.s, sizeof(float));
     printf("Result: `%f`\n", change.f);
-    
+    */
     
     CONFIG_SLEEP_INPUT();
     CONFIG_TEST_SWITCH();

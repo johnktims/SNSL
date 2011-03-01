@@ -17,6 +17,12 @@ union32 timer_max_val;
 
 unionRTCC u_RTCC;
 
+typedef union _FLOAT
+{
+    float f;
+    char s[sizeof(float)];
+} FLOAT;
+
 /****************************PIN CONFIGURATION****************************/
 #define SLEEP_INPUT _RB14
 #define TEST_SWITCH _RA2
@@ -143,9 +149,10 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
 
     WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
 
-    uint8 poll_data[40];
+    uint8 size = 2 + 6 + sizeof(float)*5 + sizeof(float)*4 + sizeof(float) + 12;    // == 60
+    uint8 poll_data[size];
     uint8 i = 0;
-    for(i = 0; i < 40; ++i)
+    for(i = 0; i < size; ++i)
     {
         poll_data[i] = 0x00;
     }
@@ -155,8 +162,8 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
     remaining_polls = 0,
     u8_char;
 
-    for(tmp = 0; tmp < 7; tmp++)
-    {
+    for(tmp = 0; tmp < 7; tmp++)    //full packet header == 7 bytes (header (1) | node address (3 bytes) | packet type (1)
+    {                               //                               | size (1) | remaining polls (1)
         u8_char = blocking_inChar();
         if(u8_char == '~')
         {
@@ -167,7 +174,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
         {
             if(tmp == 4)
             {
-                packet_length = u8_char - 2;
+                packet_length = u8_char - 2;    //subtract 2 to remove packet header and packet type from length
             }
             else if(tmp == 6)
             {
@@ -176,8 +183,8 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
         }
     }
 
-    for(tmp = 0; tmp < packet_length; ++tmp)
-    {
+    for(tmp = 0; tmp < packet_length; ++tmp)    //packet message == packet_length (max 58 == size-2)
+    {                                           //this loop reads in remainder of packet message
         u8_char = blocking_inChar();
         if(u8_char == '~')
         {
@@ -194,44 +201,68 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
     {
         poll_data[packet_length] = '\0';
 
+        // Print out the packet in ascii hex
         outString("PACKET:`");
         tmp = 0;
-        for(tmp = 0; tmp < 39; ++tmp)
+        for(tmp = 0; tmp < size-1; ++tmp)
         {
             outUint8(poll_data[tmp]);
             outChar(' ');
         }
         outString("`\n");
-        for(tmp = 0; tmp < 39; ++tmp)
+        
+        // Print out the packet in binary
+        /*for(tmp = 0; tmp < size-1; ++tmp)
         {
             outChar(poll_data[tmp]);
-        }
+        }*/
 
+        uint8 nameStart = size - 12 - 2;    //size - 2 == max packet message - max node name size == start of node name
+        // Variable-length node name, so put it in a null-terminated string for easy output
         uint8 psz_node_name[MAX_NODE_NAME_LEN];
-        for(i = 26; i < packet_length; ++i)
+        for(i = nameStart; i < packet_length; ++i)
         {
-            psz_node_name[i-26] = poll_data[i];
+            psz_node_name[i-nameStart] = poll_data[i];
         }
-        psz_node_name[i-26] = 0x0;
+        psz_node_name[i-nameStart] = 0x0;
+        
+        printf("NODE NAME: `%s`\n", psz_node_name);
 
+        FLOAT probes[10];
+        int x, offset = 6;
+        for(x = 0; x < 10; offset+=sizeof(float),++x)
+        {
+            memcpy(probes[x].s, poll_data + offset, sizeof(float));
+            //printf("\nP[%d].s = `%s`; .f=`%f`; data[%d]=%0X\n", x, probes[x].s, probes[x].f, offset, poll_data[offset]);
+        }
+        /*
         uint8 psz_fmt[] = "%02X%02X%02X,"                   // node address
         "%s,"                             // node name
         "%02x/%02x/%02x %02x:%02x:%02x,"  // timestamp [MM/DD/YY HH:MM:SS]
-        "%c%c%c%c%c%c%c%c%c%c,"           // temp samples
-        "%c%c%c%c%c%c%c%c,"               // redox samples
-        "%c%c\n";                         // ref voltage
+        "%3.3f,%3.3f,%3.3f,%3.3f,"           // temp samples
+        "%3.3f,%3.3f,%3.3f,%3.3f,%3.3f,"               // redox samples
+        "%3.3f\n";                         // ref voltage
+        */
 
+        //date(MM/DD/YYY),time(HH:MM:SS),1.250,vref,sp1,sp2,sp3,sp4,temp1,temp2,temp3,temp4,temp5,nodeName
+        uint8 psz_fmt[] =
+        "%02x/%02x/%02x,"  // timestamp [MM/DD/YY]
+        "%02x:%02x:%02x,"  // timestamp [HH:MM:SS]
+        "1.250,"           // some voltage reference
+        "%3.3f,"           // battery voltage
+        "%3.3f,%3.3f,%3.3f,%3.3f," // redox samples
+        "%3.3f,%3.3f,%3.3f,%3.3f,%3.3f," // temperature samples
+        "%s\n";                             // node name
+        
         uint8* p = poll_data;
-        uint8 psz_out[70];
+        uint8 psz_out[128];
         sprintf(psz_out, psz_fmt,
-        c_ad1, c_ad2, c_ad3,
-        psz_node_name,
-        p[0],p[1],p[2],p[3],p[4],p[5],
-        p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],
-        p[16],p[17],p[18],p[19],p[20],p[21],p[22],p[23],
-        p[24],p[25]);
-
-        psz_out[69] = 0x0;
+        p[0],p[1],p[2],p[3],p[4],p[5], // Timestamp
+        probes[0].f,                   // battery voltage
+        probes[1].f, probes[2].f, probes[3].f, probes[4].f, // redox samples
+        probes[5].f, probes[6].f, probes[7].f, probes[8].f, probes[9].f, // temperature samples
+        psz_node_name); // node name
+        psz_out[127] = 0x0;
 
         outString(psz_out);
 
