@@ -55,6 +55,7 @@ file_027=.
 file_028=.
 file_029=.
 file_030=.
+file_031=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -87,6 +88,7 @@ file_027=no
 file_028=no
 file_029=no
 file_030=no
+file_031=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -119,6 +121,7 @@ file_027=no
 file_028=no
 file_029=no
 file_030=no
+file_031=no
 [FILE_INFO]
 file_000=..\common\pic24_clockfreq.c
 file_001=..\common\pic24_configbits.c
@@ -151,6 +154,7 @@ file_027=..\include\packet.h
 file_028=..\include\pic24_adc.h
 file_029=C:\Users\Turner\Desktop\wiresoil\include\rtcc.h
 file_030=C:\Users\Turner\Desktop\wiresoil\include\adc_sample.h
+file_031=..\include\snsl.h
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}
 suite_state=

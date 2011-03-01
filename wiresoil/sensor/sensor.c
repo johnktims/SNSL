@@ -72,11 +72,6 @@ void parseInput(void){
     
     sampleProbes(af_probeData);
     
-    /*int i;
-    for (i=0; i<10; i++) {
-        printf("%f\n", af_probeData[i]);
-    }*/
-    
     outString("Polled\n");
     uint8 u8_c;
     UFDATA fdata;
@@ -149,6 +144,12 @@ void _ISRFAST _INT1Interrupt (void) {
     _LATB7 = 1;     //cut power to analog circuitry
 }
 
+typedef union _FLOAT
+{
+    float f;
+    char s[sizeof(float)];
+} FLOAT;    
+
 /****************************MAIN******************************************/
 int main(void)
 {
@@ -157,6 +158,15 @@ int main(void)
     configDefaultUART(DEFAULT_BAUDRATE); //this is UART2
     configUART2(DEFAULT_BAUDRATE);
 
+    FLOAT result;
+    result.f = -123.4567;
+    printf("Result: `%s`\n", result.s);
+    
+    FLOAT change;
+    memcpy(change.s, result.s, sizeof(float));
+    printf("Result: `%f`\n", change.f);
+    
+    
     CONFIG_SLEEP_INPUT();
     CONFIG_TEST_SWITCH();
     CONFIG_ANALOG_POWER();

@@ -19,9 +19,9 @@ unionRTCC u_RTCC;
 
 /****************************PIN CONFIGURATION****************************/
 #define SLEEP_INPUT _RB14
-#define TEST_SWITCH _RB8
+#define TEST_SWITCH _RA2
 #define VDIP_POWER	_RB7
-#define SLEEP_TIME	_RA2
+#define SLEEP_TIME	_RB8
 
 /// Sleep Input pin configuration
 inline void CONFIG_SLEEP_INPUT(void)
@@ -35,16 +35,16 @@ inline void CONFIG_SLEEP_INPUT(void)
 //Test Mode Switch pin configuration
 inline void CONFIG_TEST_SWITCH(void)
 {
-    CONFIG_RB8_AS_DIG_INPUT();
-    ENABLE_RB8_PULLUP();
+    CONFIG_RA2_AS_DIG_INPUT();
+    ENABLE_RA2_PULLUP();
     DELAY_US(1);
 }
 
 //Sleep time pin configuration
 inline void CONFIG_SLEEP_TIME(void)
 {
-    CONFIG_RA2_AS_DIG_INPUT();
-    ENABLE_RA2_PULLUP();
+    CONFIG_RB8_AS_DIG_INPUT();
+    ENABLE_RB8_PULLUP();
     DELAY_US(1);
 }
 
@@ -245,7 +245,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
         }
         return 0x01;
     }
-    else if(!SLEEP_TIME)
+    else if(SLEEP_TIME)
     {
         //record node response failure
         //do not record failure if in mesh setup mode (SLEEP_PIN == HIGH)
