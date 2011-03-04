@@ -10,15 +10,15 @@
 #define ANALOG_POWER _RB7
 
 /****************************GLOBAL VARIABLES****************************/
-uint8 remaining_polls;
+uint8 missed_polls, poll_count = 0;
+uint8 u8_polled = 0, read_old_polls = 0;
 
 unionRTCC u_RTCC;
 
-typedef union _FLOAT
-{
-    float f;
-    char s[sizeof(float)];
-} FLOAT;
+/*char* pollData[5];
+float af_probeData[10];*/
+FLOAT pollData[5][10],
+      poll[10];
 
 /****************************PIN CONFIGURATION****************************/
 /// Sleep Input pin configuration
@@ -74,17 +74,27 @@ void configHighPower(void) {
 void parseInput(void){
     //_LATB7 = 0;         //enable analog circuitry (0 == on | 1 == off)
     DELAY_MS(5);
-    float af_probeData[10];
+     
+    if (!read_old_polls) {
+        sampleProbes(poll);    //sample ADC for redox data, store in data buffer
+
+        int x,y;
+        for(x = 0; x < 10; ++x)
+        {
+            pollData[missed_polls][x].f = poll[x].f;
+        }
+    }
+    /*int z;
+    for (z=0; z<10; z++) {
+        pollData[missed_polls][z].f = 0.202+z;
+    }    */
+    //FLOAT probes[10];
     
-    sampleProbes(af_probeData);
-    
-    FLOAT probes[10];
-    
-    int x;
+    /*int x;
     for(x = 0; x < 10; ++x)
     {
-        probes[x].f = af_probeData[x];
-    }    
+        probes[x].f = pollData[missed_polls][x];
+    }*/    
     
     outString("Polled\n");
     uint8 u8_c;
@@ -108,7 +118,7 @@ void parseInput(void){
     SendPacketHeader();
     outChar2(2 + 6 + sizeof(float)*5 + sizeof(float)*4 + sizeof(float) + strlen(fdata.dat.node_name));
     outChar2(APP_SMALL_DATA);
-    outChar2(remaining_polls);	//remaining polls
+    outChar2(poll_count);	//remaining polls
     //outString("MDYHMS");
     outChar2(u_RTCC.u8.month);
     outChar2(u_RTCC.u8.date);
@@ -117,24 +127,40 @@ void parseInput(void){
     outChar2(u_RTCC.u8.min);
     outChar2(u_RTCC.u8.sec);
     
-    int y;
+    /*
+    int x,y;
     for(x = 0; x < 10; ++x)
     {
         for(y = 0; y < sizeof(float); ++y)
         {
-            outChar2(probes[x].s[y]);
+            //outChar2(probes[x].s[y]);
+            outChar2(pollData[0][x].s[y]);
         }
-    }        
+    }
+    */
+    int x,y;
+    for(x = 0; x < 10; ++x)
+    {
+        for(y = 0; y < 4; ++y)
+        {
+            outChar2(pollData[missed_polls][x].s[y]);
+        }    
+    }    
     //outString2("10tempData");
     //outString2("8redData");
     //outString2("rV");
     outString2(fdata.dat.node_name);
     //outString2("12_node_test");
 
-    if (remaining_polls != 0x00)
-    {
-        remaining_polls--;
+    if (missed_polls != 0x00){
+        missed_polls--;
+        poll_count--;
+        read_old_polls = 1;
     }
+    else {
+        read_old_polls = 0;
+    }    
+    u8_polled = 0;
 }
 
 /****************************INTERRUPT HANDLERS****************************/
@@ -146,6 +172,7 @@ void _ISRFAST _INT1Interrupt (void) {
 
     if (SLEEP_INPUT)
     {
+        u8_polled = 1;
         _DOZE = 8; //chose divide by 32
         while (SLEEP_INPUT)
         {
@@ -159,6 +186,14 @@ void _ISRFAST _INT1Interrupt (void) {
             }
         }
     }
+    if (u8_polled == 1) {
+        //node woke up but wasn't successfully polled | store data and increment missed_polls
+        missed_polls = ++missed_polls %5;    
+        poll_count++;
+        if (poll_count > 5) {
+            poll_count = 5;
+        }    
+    }    
 
     U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
     U2STAbits.UTXEN = 0;                      //disable the transmitter
@@ -200,9 +235,10 @@ int main(void)
     char defaultName[] = "default";
     SNSL_SetNodeName(defaultName);
     
-    remaining_polls = 0x00;
+    missed_polls = 0x00;
     
     outString("Hello World\n");
+    printResetCause();
 
     while (1) {
         if (!TEST_SWITCH)

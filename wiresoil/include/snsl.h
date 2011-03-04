@@ -61,6 +61,12 @@ typedef union _unionRTCC {
     uint16 regs[4];
 }unionRTCC;
 
+typedef union _FLOAT
+{
+    float f;
+    char s[sizeof(float)];
+} FLOAT;
+
 /***********************************************************
  * Function Headers
  **********************************************************/

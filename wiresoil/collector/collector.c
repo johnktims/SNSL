@@ -11,11 +11,16 @@ uint8 u8_numHops, u8_failureLimit;
 uint32 u32_hopTimeout;
 uint8 u8_stopPolling;
 
-uint8 u8_pollsCompleted, u8_pollsIgnored, u8_pollsFailed;
+uint8 u8_pollsCompleted, u8_pollsIgnored, u8_pollsFailed, u8_newFileName;
 
 union32 timer_max_val;
 
-unionRTCC u_RTCC;
+unionRTCC u_RTCC,
+          u_RTCCatStartup;
+
+uint8 psz_out[128];
+
+char filename[13];
 
 typedef union _FLOAT
 {
@@ -235,27 +240,18 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
             memcpy(probes[x].s, poll_data + offset, sizeof(float));
             //printf("\nP[%d].s = `%s`; .f=`%f`; data[%d]=%0X\n", x, probes[x].s, probes[x].f, offset, poll_data[offset]);
         }
-        /*
-        uint8 psz_fmt[] = "%02X%02X%02X,"                   // node address
-        "%s,"                             // node name
-        "%02x/%02x/%02x %02x:%02x:%02x,"  // timestamp [MM/DD/YY HH:MM:SS]
-        "%3.3f,%3.3f,%3.3f,%3.3f,"           // temp samples
-        "%3.3f,%3.3f,%3.3f,%3.3f,%3.3f,"               // redox samples
-        "%3.3f\n";                         // ref voltage
-        */
 
         //date(MM/DD/YYY),time(HH:MM:SS),1.250,vref,sp1,sp2,sp3,sp4,temp1,temp2,temp3,temp4,temp5,nodeName
         uint8 psz_fmt[] =
-        "%02x/%02x/%02x,"  // timestamp [MM/DD/YY]
-        "%02x:%02x:%02x,"  // timestamp [HH:MM:SS]
-        "1.250,"           // some voltage reference
-        "%3.3f,"           // battery voltage
-        "%3.3f,%3.3f,%3.3f,%3.3f," // redox samples
+        "%02x/%02x/%02x,"                // timestamp [MM/DD/YY]
+        "%02x:%02x:%02x,"                // timestamp [HH:MM:SS]
+        "1.250,"                         // some voltage reference
+        "%3.3f,"                         // battery voltage
+        "%3.3f,%3.3f,%3.3f,%3.3f,"       // redox samples
         "%3.3f,%3.3f,%3.3f,%3.3f,%3.3f," // temperature samples
-        "%s\n";                             // node name
+        "%s\n";                          // node name
         
         uint8* p = poll_data;
-        uint8 psz_out[128];
         sprintf(psz_out, psz_fmt,
         p[0],p[1],p[2],p[3],p[4],p[5], // Timestamp
         probes[0].f,                   // battery voltage
@@ -265,10 +261,8 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
         psz_out[127] = 0x0;
 
         outString(psz_out);
-
-        VDIP_WriteFile("DATA.TXT", psz_out);
-
-        outChar('\n');
+        
+        VDIP_WriteFile(filename, psz_out);
 
         if(remaining_polls != 0)
         {
@@ -328,17 +322,29 @@ void _ISRFAST _INT1Interrupt(void)
                     sendEndPoll();
                     continue;
                 }
-                //outString("VDIP does exist\n");
+
+                uint8 fileCount = 1;
+                if(u8_newFileName)
+                {
+                    sprintf(filename, "%02d%02d%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, fileCount);
+                    printf("Evaluating: `%s`\n", filename);
+                    while(VDIP_FileExists(filename))
+                    {
+                        sprintf(filename, "%02d%02d%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, ++fileCount);
+                        printf("Evaluating: `%s`\n", filename);
+                    }
+                    outString("out of while\n");
+                    printf("New filename: `%s`\n", filename);
+                    u8_newFileName = 0;
+                }
 
                 polls = SNSL_MergeConfig();
                 SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
-
                 u32_hopTimeout = 300;
                 uint8 u8_i = 0;
 
                 RTCC_Read(&u_RTCC);
                 SNSL_LogPollEvent(0x00, &u_RTCC);  //log polling started
-
                 while(polls[u8_i].attempts != LAST_POLL_FLAG)
                 {
                     if(polls[u8_i].attempts <= u8_failureLimit)
@@ -542,6 +548,9 @@ int main(void)
             _INT1IE = 1;    // Enable the interrupt
     
             _LATB7 = 1;     // Cut power to VDIP
+            
+            RTCC_Read(&u_RTCCatStartup);
+            u8_newFileName = 1;
     
             while(1)
             {
