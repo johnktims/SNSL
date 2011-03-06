@@ -10,15 +10,13 @@
 #define ANALOG_POWER _RB7
 
 /****************************GLOBAL VARIABLES****************************/
-uint8 missed_polls, poll_count = 0;
-uint8 u8_polled = 0, read_old_polls = 0;
+int missed_polls = 0, poll_count = 0;
+uint8 u8_polled = 0;
 
 unionRTCC u_RTCC;
 
-/*char* pollData[5];
-float af_probeData[10];*/
-FLOAT pollData[5][10],
-      poll[10];
+STORED_SAMPLE pollData[MAX_STORED_SAMPLES];
+FLOAT poll[NUM_ADC_PROBES];
 
 /****************************PIN CONFIGURATION****************************/
 /// Sleep Input pin configuration
@@ -72,30 +70,8 @@ void configHighPower(void) {
 
 /****************************POLLING FUNCTIONS****************************/
 void parseInput(void){
-    //_LATB7 = 0;         //enable analog circuitry (0 == on | 1 == off)
     DELAY_MS(5);
-     
-    if (!read_old_polls) {
-        sampleProbes(poll);    //sample ADC for redox data, store in data buffer
-
-        int x,y;
-        for(x = 0; x < 10; ++x)
-        {
-            pollData[missed_polls][x].f = poll[x].f;
-        }
-    }
-    /*int z;
-    for (z=0; z<10; z++) {
-        pollData[missed_polls][z].f = 0.202+z;
-    }    */
-    //FLOAT probes[10];
-    
-    /*int x;
-    for(x = 0; x < 10; ++x)
-    {
-        probes[x].f = pollData[missed_polls][x];
-    }*/    
-    
+        
     outString("Polled\n");
     uint8 u8_c;
     UFDATA fdata;
@@ -112,7 +88,7 @@ void parseInput(void){
     while (!RCFGCALbits.RTCSYNC)
     {
     }
-    RTCC_Read(&u_RTCC);
+    //RTCC_Read(&u_RTCC);
     //packet structure: 0x1E(1)|Packet Length(1)|Packet Type(1)|Remaining polls(1)|Timestamp(6)|Temp data(10)|Redox data(8)|
     //					Reference Voltage(2)|Node Name(12 max)
     SendPacketHeader();
@@ -120,30 +96,19 @@ void parseInput(void){
     outChar2(APP_SMALL_DATA);
     outChar2(poll_count);	//remaining polls
     //outString("MDYHMS");
-    outChar2(u_RTCC.u8.month);
-    outChar2(u_RTCC.u8.date);
-    outChar2(u_RTCC.u8.yr);
-    outChar2(u_RTCC.u8.hour);
-    outChar2(u_RTCC.u8.min);
-    outChar2(u_RTCC.u8.sec);
+    outChar2(pollData[missed_polls].ts.u8.month);
+    outChar2(pollData[missed_polls].ts.u8.date);
+    outChar2(pollData[missed_polls].ts.u8.yr);
+    outChar2(pollData[missed_polls].ts.u8.hour);
+    outChar2(pollData[missed_polls].ts.u8.min);
+    outChar2(pollData[missed_polls].ts.u8.sec);
     
-    /*
-    int x,y;
-    for(x = 0; x < 10; ++x)
+    int x, y;
+    for(x = 0; x < NUM_ADC_PROBES; ++x)
     {
         for(y = 0; y < sizeof(float); ++y)
         {
-            //outChar2(probes[x].s[y]);
-            outChar2(pollData[0][x].s[y]);
-        }
-    }
-    */
-    int x,y;
-    for(x = 0; x < 10; ++x)
-    {
-        for(y = 0; y < 4; ++y)
-        {
-            outChar2(pollData[missed_polls][x].s[y]);
+            outChar2(pollData[missed_polls].samples[x].s[y]);
         }    
     }    
     //outString2("10tempData");
@@ -152,15 +117,15 @@ void parseInput(void){
     outString2(fdata.dat.node_name);
     //outString2("12_node_test");
 
-    if (missed_polls != 0x00){
-        missed_polls--;
-        poll_count--;
-        read_old_polls = 1;
-    }
-    else {
-        read_old_polls = 0;
+
+    if (poll_count != 0x00){
+        --missed_polls;
+        if (missed_polls < 0) {
+            missed_polls = MAX_STORED_SAMPLES;
+        }    
+        --poll_count;
     }    
-    u8_polled = 0;
+    u8_polled = 1;
 }
 
 /****************************INTERRUPT HANDLERS****************************/
@@ -172,8 +137,18 @@ void _ISRFAST _INT1Interrupt (void) {
 
     if (SLEEP_INPUT)
     {
-        u8_polled = 1;
+        u8_polled = 0;
         _DOZE = 8; //chose divide by 32
+        
+        sampleProbes(poll);    //sample ADC for redox data, store in data buffer
+        RTCC_Read(&pollData[missed_polls].ts);
+
+        int x;
+        for(x = 0; x < NUM_ADC_PROBES; ++x)
+        {
+            pollData[missed_polls].samples[x].f = poll[x].f;
+        }
+
         while (SLEEP_INPUT)
         {
             _DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
@@ -186,13 +161,15 @@ void _ISRFAST _INT1Interrupt (void) {
             }
         }
     }
-    if (u8_polled == 1) {
+    if (u8_polled == 0) {
         //node woke up but wasn't successfully polled | store data and increment missed_polls
-        missed_polls = ++missed_polls %5;    
-        poll_count++;
-        if (poll_count > 5) {
-            poll_count = 5;
-        }    
+        missed_polls = ++missed_polls % MAX_STORED_SAMPLES;    
+        ++poll_count;
+        if (poll_count > MAX_STORED_SAMPLES) {
+            poll_count = MAX_STORED_SAMPLES;
+        }  
+        printf("Poll count: %d\n", poll_count);
+        printf("Missed polls: %d\n", missed_polls);
     }    
 
     U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
@@ -210,16 +187,6 @@ int main(void)
     configClock();
     configDefaultUART(DEFAULT_BAUDRATE); //this is UART2
     configUART2(DEFAULT_BAUDRATE);
-
-    /*
-    FLOAT result;
-    result.f = -123.4567;
-    printf("Result: `%s`\n", result.s);
-    
-    FLOAT change;
-    memcpy(change.s, result.s, sizeof(float));
-    printf("Result: `%f`\n", change.f);
-    */
     
     CONFIG_SLEEP_INPUT();
     CONFIG_TEST_SWITCH();

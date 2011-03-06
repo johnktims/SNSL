@@ -13,6 +13,8 @@
 #define LAST_POLL_FLAG     0xff
 #define UNKNOWN_NODE       0xff
 
+#define MAX_STORED_SAMPLES 0x05
+#define NUM_ADC_PROBES 0x0a
 
 /***********************************************************
  * RTSP Structures
@@ -66,6 +68,12 @@ typedef union _FLOAT
     float f;
     char s[sizeof(float)];
 } FLOAT;
+
+typedef struct _STORED_SAMPLE
+{
+    FLOAT samples[NUM_ADC_PROBES];
+    unionRTCC ts;
+} STORED_SAMPLE;
 
 /***********************************************************
  * Function Headers

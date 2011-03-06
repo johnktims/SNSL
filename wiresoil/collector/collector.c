@@ -22,12 +22,6 @@ uint8 psz_out[128];
 
 char filename[13];
 
-typedef union _FLOAT
-{
-    float f;
-    char s[sizeof(float)];
-} FLOAT;
-
 /****************************PIN CONFIGURATION****************************/
 #define SLEEP_INPUT _RB14
 #define TEST_SWITCH _RA2
@@ -326,11 +320,11 @@ void _ISRFAST _INT1Interrupt(void)
                 uint8 fileCount = 1;
                 if(u8_newFileName)
                 {
-                    sprintf(filename, "%02d%02d%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, fileCount);
+                    sprintf(filename, "%02x%02x%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, fileCount);
                     printf("Evaluating: `%s`\n", filename);
                     while(VDIP_FileExists(filename))
                     {
-                        sprintf(filename, "%02d%02d%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, ++fileCount);
+                        sprintf(filename, "%02x%02x%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, ++fileCount);
                         printf("Evaluating: `%s`\n", filename);
                     }
                     outString("out of while\n");
@@ -340,7 +334,7 @@ void _ISRFAST _INT1Interrupt(void)
 
                 polls = SNSL_MergeConfig();
                 SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
-                u32_hopTimeout = 300;
+                //u32_hopTimeout = 300;
                 uint8 u8_i = 0;
 
                 RTCC_Read(&u_RTCC);
@@ -427,6 +421,13 @@ int main(void)
     u8_stopPolling = 0;
     configTimer23();
     
+    while (!RCFGCALbits.RTCSYNC) {
+    }    
+    RTCC_Read(&u_RTCCatStartup);
+    RTCC_Print(&u_RTCC);
+    printf("Month: %2x Day: %2x Year: %2x\n", (uint16)u_RTCCatStartup.u8.month,
+            (uint16)u_RTCCatStartup.u8.date, (uint16)u_RTCCatStartup.u8.yr);
+    
     while (1) {
 
         if(!TEST_SWITCH)
@@ -476,6 +477,7 @@ int main(void)
                         DELAY_MS(700);
                     }
                 }
+                RTCC_Read(&u_RTCCatStartup);
             }
             else if(u8_menuIn == '2')
             {
@@ -549,7 +551,6 @@ int main(void)
     
             _LATB7 = 1;     // Cut power to VDIP
             
-            RTCC_Read(&u_RTCCatStartup);
             u8_newFileName = 1;
     
             while(1)
