@@ -20,10 +20,17 @@ int main(void)
 	//config SPI for VDIP1
 	VDIP_Init();
 	
-	/*uint8 **polls = SNSL_ParseNodeNames();
-	outString("Node Adresses Loaded:\n");
-	printf("%2x%2x%2x \n", polls[0][0], polls[0][1], polls[0][2]);
-	printf("%2x%2x%2x \n", polls[1][0], polls[1][1], polls[1][2]);*/
+	outString("Node Addresses Loaded:\n");
+	uint8 **polls = SNSL_ParseNodeNames();
+	uint8 i = 0;
+	while(polls[i])
+	{
+	    printf("%2x%2x%2x \n", polls[i][0], polls[i][1], polls[i][2]);
+	//printf("%2x%2x%2x \n", polls[1][0], polls[1][1], polls[1][2]);*/
+	    ++i;
+	}
+	
+	return 0;
 	
 	uint8 hops, thresh;
 	uint32 timeout;

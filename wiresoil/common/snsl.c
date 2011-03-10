@@ -30,22 +30,25 @@ uint8** SNSL_ParseNodeNames(void)
 
     uint8 *psz_data  = VDIP_ReadFile(FILE_NODES);
     uint32 u32_size  = VDIP_FileSize(FILE_NODES),
-           u32_index = 0;
+           u32_index;
 
     // Count the newlines to count the number
     // of nodes we need to allocate memory for
     uint32 u32_nodes = 0,
            u32_delimiter_width = 1;
 
-    for(; u32_index < u32_size; ++u32_index)
+    for(u32_index = 0; u32_index < u32_size; ++u32_index)
     {
-        // Take care of linux and windows newlines
+        // Skip Carriage Returns created by Windows
         if(psz_data[u32_index] == '\r')
         {
+            u32_delimiter_width = 2;
             continue;
         }
+
+        // See if we're at the end of a line or the
+        // end of the file without a newline
         if(psz_data[u32_index] == '\n' ||
-           psz_data[u32_index] == '\r' ||
            (u32_index == u32_size-1 &&
             psz_data[u32_index] != '\n'))
         {
@@ -53,21 +56,28 @@ uint8** SNSL_ParseNodeNames(void)
                psz_data[u32_index] == '\n')
             {
                ++u32_index;
-               u32_delimiter_width = 2;
             }
             ++u32_nodes;
         }
     }
 
-    //printf("Nodes found: `%u`\n", (unsigned)u32_nodes);
-    //printf("Delim width: `%u`\n", (unsigned)u32_delimiter_width);
-
+    /*
+    printf("Nodes found: `%u`\n", (unsigned)u32_nodes);
+    printf("Delim width: `%u`\n", (unsigned)u32_delimiter_width);
+    printf("Size of NODES.TXT: `%u`\n", (unsigned)u32_size);
+    
+    printf("Output in hex: ");
+    uint32 u32_i = 0;
+    for(u32_i = 0; u32_i < u32_size; ++u32_i)
+    {
+        printf("0x%02X ", psz_data[u32_i]);
+    }
+    printf("\n\n");
+    */
+    
     // Allocate space - node addresses are fixed
     // at three characters.
     uint8 **psz_nodes = (uint8**)malloc(sizeof(uint8*) * (u32_nodes + 1));
-
-    // Null terminate the array so it will be easy to traverse
-    psz_nodes[u32_nodes] = '\0';
 
     // Allocate memory for the filenames. This could have
     // been done in one call, but contiguous memory space
@@ -85,18 +95,28 @@ uint8** SNSL_ParseNodeNames(void)
 
     for(u32_index = 0; u32_index < u32_size; u32_index += u32_delimiter_width)
     {
+        // outString("\nNEW NODE: ");
         for(u8_index = 0; u8_index < 3; ++u8_index)
         {
             sz_hex[0] = (uint8)psz_data[u32_index++];
             sz_hex[1] = (uint8)psz_data[u32_index++];
             sscanf(sz_hex, "%x", &u8_hex);
 
-            //printf("0,1,h:`%u`,`%u` `%c`, `0x%X`, `%c`,`%d`,`0x%X`\n",
+            //printf("h:`%u`,`%u` `%c`, `0x%02X`, `%c`,`%d`,`0x%X`\n",
             //    u8_node, u8_index, sz_hex[0], sz_hex[1], u8_hex, u8_hex, u8_hex);
+            //printf("0x%02X", u8_hex);
+            
             psz_nodes[u8_node][u8_index] = u8_hex;
+            
+            //printf("psz_nodes[%u][%u] = 0x%02X;\n", u8_node, u8_index, u8_hex);
         }
-        psz_nodes[u8_node++][u8_index] = '\0';
+        ++u8_node;
+        //outString("\n");
     }
+
+    // Null terminate the array so it will be easy to traverse
+    psz_nodes[u32_nodes] = '\0';
+    
     free(psz_data);
 
     return psz_nodes;
@@ -684,4 +704,24 @@ void SNSL_CreateDefaultConfig(void)
     POLL LAST_POLL;
     LAST_POLL.attempts = LAST_POLL_FLAG;
     SNSL_WriteConfig(4, (uint32)300, 16, &LAST_POLL);
+    VDIP_Sync();
+    
+    POLL *polls = SNSL_MergeConfig();
+    SNSL_WriteConfig(4, (uint32)300, 16, polls);
+    
+    puts("SNSL_Creating config: merge");
+    SNSL_PrintPolls(polls);
+    free(polls);
 }
+
+void SNSL_PrintPolls(POLL *polls)
+{
+    int i = 0;
+    while(polls[i].attempts != LAST_POLL_FLAG)
+    {
+        printf("Name: `%02X%02X%02X`; attempts: `%d`\n", polls[i].name[0],
+        polls[i].name[1], polls[i].name[2], polls[i].attempts);
+        ++i;
+    }
+}
+   

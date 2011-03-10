@@ -92,7 +92,9 @@ void parseInput(void){
     //packet structure: 0x1E(1)|Packet Length(1)|Packet Type(1)|Remaining polls(1)|Timestamp(6)|Temp data(10)|Redox data(8)|
     //					Reference Voltage(2)|Node Name(12 max)
     SendPacketHeader();
-    outChar2(2 + 6 + sizeof(float)*5 + sizeof(float)*4 + sizeof(float) + strlen(fdata.dat.node_name));
+    uint8 length = 2 + 6 + sizeof(float)*5 + sizeof(float)*4 + sizeof(float) + strlen(fdata.dat.node_name);
+    outChar2(length);
+    outUint8(length);
     outChar2(APP_SMALL_DATA);
     outChar2(poll_count);	//remaining polls
     //outString("MDYHMS");

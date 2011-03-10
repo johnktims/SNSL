@@ -89,15 +89,18 @@ void startTimer23(void)
 /****************************POLLING FUNCTIONS****************************/
 uint8 blocking_inChar(void)
 {
+    uint8 u8_char = '~';
     startTimer23();
     // Wait for character
     while(!isCharReady2() && !u8_stopPolling){}
     if(!u8_stopPolling)
     {
         T2CONbits.TON = 0;
-        return inChar2();
+        u8_char = inChar2();
     }
-    return '~';
+    
+    //printf("char input: %c | %x\n", u8_char, u8_char);
+    return u8_char;
 }
 
 uint8 isMeshUp(void)
@@ -145,7 +148,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
     outChar2(c_ad3);
     outChar2(0x03);	//Appdata packet (forward data directly to PIC)
     outChar2(MONITOR_REQUEST_DATA_STATUS);
-
+    //puts("---> Sent");
     WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
 
     uint8 size = 2 + 6 + sizeof(float)*5 + sizeof(float)*4 + sizeof(float) + 12;    // == 60
@@ -156,14 +159,19 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
         poll_data[i] = 0x00;
     }
 
-    uint8 tmp = 0,
+    volatile uint8 tmp,
     packet_length = 0,
     remaining_polls = 0,
     u8_char;
 
+    //puts("---> Parsing Header");
     for(tmp = 0; tmp < 7; tmp++)    //full packet header == 7 bytes (header (1) | node address (3 bytes) | packet type (1)
     {                               //                               | size (1) | remaining polls (1)
         u8_char = blocking_inChar();
+        if (u8_char == 0 && tmp == 0) {
+            u8_char = blocking_inChar();
+        }    
+        //printf("char input: %c | %x\n", u8_char, u8_char);
         if(u8_char == '~')
         {
             u8_stopPolling = 1;
@@ -174,6 +182,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
             if(tmp == 4)
             {
                 packet_length = u8_char - 2;    //subtract 2 to remove packet header and packet type from length
+                
             }
             else if(tmp == 6)
             {
@@ -182,6 +191,8 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
         }
     }
 
+    //printf("Remaining polls: `%u`\n", remaining_polls);
+    //puts("---> Parse Packet");
     for(tmp = 0; tmp < packet_length; ++tmp)    //packet message == packet_length (max 58 == size-2)
     {                                           //this loop reads in remainder of packet message
         u8_char = blocking_inChar();
@@ -198,6 +209,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
 
     if(!u8_stopPolling)
     {
+        //puts("---> Format and Print");
         poll_data[packet_length] = '\0';
 
         // Print out the packet in ascii hex
@@ -256,21 +268,25 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
 
         outString(psz_out);
         
+       // puts("---> Writing File");
         VDIP_WriteFile(filename, psz_out);
-
-        if(remaining_polls != 0)
+        //puts("---> Done writing polls");
+        if(remaining_polls != 0x00)
         {
             doPoll(c_ad1, c_ad2, c_ad3);
         }
+        //puts("---> Success");
         return 0x01;
     }
     else if(SLEEP_TIME)
     {
+        //puts("---> Fail and record");
         //record node response failure
         //do not record failure if in mesh setup mode (SLEEP_PIN == HIGH)
         return 0x00;
     }
     else {
+        //puts("---> Fail and don't record");
         return 0x02;
     }
 }
@@ -330,9 +346,14 @@ void _ISRFAST _INT1Interrupt(void)
                     outString("out of while\n");
                     printf("New filename: `%s`\n", filename);
                     u8_newFileName = 0;
+                    VDIP_Sync();
                 }
+                //sprintf(filename, "data.txt");
 
                 polls = SNSL_MergeConfig();
+                //puts("--- Printing MergeConfig");
+                SNSL_PrintPolls(polls);
+                
                 SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
                 //u32_hopTimeout = 300;
                 uint8 u8_i = 0;
@@ -362,6 +383,13 @@ void _ISRFAST _INT1Interrupt(void)
                                                     &u_RTCC);
                             u8_pollsFailed++;
                         }
+                        else if (u8_pollReturn == 0x02){
+                            RTCC_Read(&u_RTCC);
+                            polls[u8_i].attempts = 0;
+                            SNSL_LogResponseFailure(polls[u8_i].attempts, polls[u8_i].name[0],
+                                                    polls[u8_i].name[1], polls[u8_i].name[2],
+                                                    &u_RTCC);
+                        }    
                     }
                     else
                     {
@@ -424,9 +452,9 @@ int main(void)
     while (!RCFGCALbits.RTCSYNC) {
     }    
     RTCC_Read(&u_RTCCatStartup);
-    RTCC_Print(&u_RTCC);
-    printf("Month: %2x Day: %2x Year: %2x\n", (uint16)u_RTCCatStartup.u8.month,
-            (uint16)u_RTCCatStartup.u8.date, (uint16)u_RTCCatStartup.u8.yr);
+    //RTCC_Print(&u_RTCC);
+    //printf("Month: %2x Day: %2x Year: %2x\n", (uint16)u_RTCCatStartup.u8.month,
+    //        (uint16)u_RTCCatStartup.u8.date, (uint16)u_RTCCatStartup.u8.yr);
     
     while (1) {
 
@@ -453,10 +481,13 @@ int main(void)
             outString("3. Set timout per hop\n");
             outString("4. Set node failure limit\n");
             outString("5. Reset node ignore list\n");
+            outString("6. Exit Setup\n");
             outString("--> ");
             u8_menuIn = inCharEcho();
     
-            outString("\n\nInitilizing Setup. Please wait....\n\n");
+            if (u8_menuIn != '6') {
+                outString("\n\nInitilizing Setup. Please wait....\n\n");
+            }    
             //VDIP_Init();
     
             SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
@@ -536,6 +567,11 @@ int main(void)
                 outString("\nNode ignore list reset.");
                 WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
             }
+            else if(u8_menuIn == '6') {
+                outString("Exiting setup......\n");
+                outString("\nPlease move SETUP swtich from 'MENU' to 'NORM' and then press");
+                outString(" any key to return to normal mode.\n");
+            }    
     
             SNSL_WriteConfig(u8_numHops, u32_hopTimeout, u8_failureLimit, polls);
             free(polls);

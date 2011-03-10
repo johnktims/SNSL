@@ -102,5 +102,6 @@ void    SNSL_LogPollingStats(unionRTCC *, uint8, uint8, uint8);
 
 uint32  SNSL_Pow(uint8, uint8);
 uint32  SNSL_Atoi(uint8 *);
+void SNSL_PrintPolls(POLL *);
 
 #endif // SNSL_H
