@@ -573,7 +573,8 @@ void SNSL_LogPollEvent(uint8 type, unionRTCC *u_RTCC)
     }
 
     log_out[49] = 0x0;
-    outString(log_out);
+    printf("\n----->%s", log_out);
+    //outString("\n---->" + log_out);
     VDIP_WriteFile("LOG.TXT", log_out);
 }
 
@@ -724,4 +725,3 @@ void SNSL_PrintPolls(POLL *polls)
         ++i;
     }
 }
-   

@@ -20,11 +20,11 @@
 //**********************************************************
 
 uint8 RTCC_GetBCDValue(char *sz_1) {
-	char sz_buff[8];
+	char sz_buff[3];
 	uint16 u16_bin;
 	uint8 u8_bcd;
 	outString(sz_1);
-	inStringEcho(sz_buff, 7);
+	inStringEcho(sz_buff, 2);
 	sscanf(sz_buff, "%d", (int *)&u16_bin);
 	u8_bcd = u16_bin/10;
 	u8_bcd <<= 4;
@@ -59,14 +59,24 @@ uint8 RTCC_ParseVal(char *sz_1) {
 
 void RTCC_GetDateFromUser(unionRTCC *ur) {
     
-	ur->u8.yr    = RTCC_GetBCDValue("\nEnter year (0-99): ");
-	ur->u8.month = RTCC_GetBCDValue("\nEnter month (1-12): ");
-	ur->u8.date  = RTCC_GetBCDValue("\nEnter day of month (1-31): ");
+	ur->u8.yr    = RTCC_GetBCDValue("\nEnter year (00-99): ");
+	ur->u8.month = RTCC_GetBCDValue("\nEnter month (01-12): ");
+	ur->u8.date  = RTCC_GetBCDValue("\nEnter day of month (01-31): ");
 	ur->u8.wday  = RTCC_GetBCDValue("\nEnter week day (0 (Sunday)-6 (Saturday)): ");
-	ur->u8.hour  = RTCC_GetBCDValue("\nEnter hour (0-23): ");
-	ur->u8.min   = RTCC_GetBCDValue("\nEnter min (0-59): ");
-	ur->u8.sec   = RTCC_GetBCDValue("\nEnter sec(0-59): ");
+	ur->u8.hour  = RTCC_GetBCDValue("\nEnter hour (00-23): ");
+	ur->u8.min   = RTCC_GetBCDValue("\nEnter min (00-59): ");
+	ur->u8.sec   = RTCC_GetBCDValue("\nEnter sec(00-59): ");
 }
+
+void RTCC_GetDateFromUserNoWday(unionRTCC *ur) {
+    ur->u8.yr    = RTCC_GetBCDValue("\nEnter year (00-99): ");
+	ur->u8.month = RTCC_GetBCDValue("\nEnter month (01-12): ");
+	ur->u8.date  = RTCC_GetBCDValue("\nEnter day of month (01-31): ");
+	ur->u8.wday  = RTCC_ParseVal("0");
+	ur->u8.hour  = RTCC_GetBCDValue("\nEnter hour (00-23): ");
+	ur->u8.min   = RTCC_GetBCDValue("\nEnter min (00-59): ");
+	ur->u8.sec   = RTCC_GetBCDValue("\nEnter sec(00-59): ");
+}    
 
 //**********************************************************
 /**

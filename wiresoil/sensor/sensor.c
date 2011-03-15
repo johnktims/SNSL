@@ -10,13 +10,13 @@
 #define ANALOG_POWER _RB7
 
 /****************************GLOBAL VARIABLES****************************/
-int missed_polls = 0, poll_count = 0;
-uint8 u8_polled = 0;
+volatile int missed_polls = 0, poll_count = 0;
+volatile uint8 u8_polled = 0;
 
-unionRTCC u_RTCC;
+volatile unionRTCC u_RTCC;
 
-STORED_SAMPLE pollData[MAX_STORED_SAMPLES];
-FLOAT poll[NUM_ADC_PROBES];
+volatile STORED_SAMPLE pollData[MAX_STORED_SAMPLES];
+volatile FLOAT poll[NUM_ADC_PROBES];
 
 /****************************PIN CONFIGURATION****************************/
 /// Sleep Input pin configuration
@@ -71,15 +71,14 @@ void configHighPower(void) {
 /****************************POLLING FUNCTIONS****************************/
 void parseInput(void){
     DELAY_MS(5);
-        
-    outString("Polled\n");
+
     uint8 u8_c;
     UFDATA fdata;
     SNSL_GetNodeName(&fdata);
 
     u8_c = inChar2();
-    outChar(u8_c);
-    outChar('\n');
+    //outChar(u8_c);
+    //outChar('\n');
     if (u8_c != MONITOR_REQUEST_DATA_STATUS) {
         outString("REQUEST FAILURE\n");
         return;
@@ -94,7 +93,7 @@ void parseInput(void){
     SendPacketHeader();
     uint8 length = 2 + 6 + sizeof(float)*5 + sizeof(float)*4 + sizeof(float) + strlen(fdata.dat.node_name);
     outChar2(length);
-    outUint8(length);
+    printf("TX Packet Size: 0x%2x\n", length);
     outChar2(APP_SMALL_DATA);
     outChar2(poll_count);	//remaining polls
     //outString("MDYHMS");
@@ -128,57 +127,12 @@ void parseInput(void){
         --poll_count;
     }    
     u8_polled = 1;
+    outString("Poll Response Complete\n\n");
 }
 
 /****************************INTERRUPT HANDLERS****************************/
 void _ISRFAST _INT1Interrupt (void) {
-    configHighPower();
-    
-    U2MODEbits.UARTEN = 1;                    // enable UART RX/TX
-    U2STAbits.UTXEN = 1;                      //enable the transmitter
-
-    if (SLEEP_INPUT)
-    {
-        u8_polled = 0;
-        _DOZE = 8; //chose divide by 32
-        
-        sampleProbes(poll);    //sample ADC for redox data, store in data buffer
-        RTCC_Read(&pollData[missed_polls].ts);
-
-        int x;
-        for(x = 0; x < NUM_ADC_PROBES; ++x)
-        {
-            pollData[missed_polls].samples[x].f = poll[x].f;
-        }
-
-        while (SLEEP_INPUT)
-        {
-            _DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
-            //outString("Waiting for char\n");
-            if (isCharReady2())
-            {
-                _DOZEN = 0;
-                outString("Responding...\n");
-                parseInput();  //satisfy the polling
-            }
-        }
-    }
-    if (u8_polled == 0) {
-        //node woke up but wasn't successfully polled | store data and increment missed_polls
-        missed_polls = ++missed_polls % MAX_STORED_SAMPLES;    
-        ++poll_count;
-        if (poll_count > MAX_STORED_SAMPLES) {
-            poll_count = MAX_STORED_SAMPLES;
-        }  
-        printf("Poll count: %d\n", poll_count);
-        printf("Missed polls: %d\n", missed_polls);
-    }    
-
-    U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
-    U2STAbits.UTXEN = 0;                      //disable the transmitter
-    SNSL_ConfigLowPower();
     _INT1IF = 0;		//clear interrupt flag before exiting
-    _LATB7 = 1;     //cut power to analog circuitry
 }
     
 
@@ -201,13 +155,17 @@ int main(void)
     RTCC_SetDefaultVals(&u_RTCC);
     RTCC_Set(&u_RTCC);
     
-    char defaultName[] = "default";
-    SNSL_SetNodeName(defaultName);
+    UFDATA fdata;
+    SNSL_GetNodeName(&fdata);
+    if (fdata.dat.node_name[0] == 0xFF) {
+        char defaultName[] = "default";
+        SNSL_SetNodeName(defaultName);
+    }    
     
     missed_polls = 0x00;
     
-    outString("Hello World\n");
-    printResetCause();
+    //outString("Hello World\n");
+    //printResetCause();
 
     while (1) {
         if (!TEST_SWITCH)
@@ -215,20 +173,22 @@ int main(void)
             _INT1IE = 0;		//make sure the interrupt is disabled
             uint8 u8_menuIn;
     
-            outString("Setup Mode:\n\n");
+            outString("\n\n\nSetup Mode:\n\n");
             outString("Choose an option -\n\n");
             outString("1. Configure Clock\n");
             outString("2. Set Node Name\n");
+            outString("3. Exit Setup Mode\n");
             outString("--> ");
             u8_menuIn = inChar();
             DELAY_MS(100);
     
             if (u8_menuIn == '1')
             {
-                RTCC_GetDateFromUser(&u_RTCC);
-                outString("\n\nInitializing clock....");
+                outString("\n\nSetting Clock:\n");
+                RTCC_GetDateFromUserNoWday(&u_RTCC);
+                //outString("\n\nInitializing clock....");
                 RTCC_Set(&u_RTCC);
-                outString("\nTesting clock (press any key to end):\n");
+                /*outString("\nTesting clock (press any key to end):\n");
                 while (!isCharReady())
                 {
                     if (RCFGCALbits.RTCSYNC)
@@ -237,27 +197,36 @@ int main(void)
                         RTCC_Print(&u_RTCC);
                         DELAY_MS(700);
                     }
-                }
+                }*/
+                outString("\n\nClock set. Returning to menu....\n");
+                WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
             }
     
             if (u8_menuIn == '2')
             {
+                outString("\n\nSetting node name:\n");
                 outString("\nCurrent node name: ");
                 SNSL_PrintNodeName();
                 outString("\n\nEnter new node name [maximum 12 characters]: ");
                 char name_buff[13];
                 inStringEcho(name_buff, 12);
-                outString("\n\nSaving new node name........");
                 SNSL_SetNodeName(name_buff);
-                outString("\nNew node name: ");
-                SNSL_PrintNodeName();
+                outString("\nNew node name saved. Returning to menu....\n");
                 //outString(name_buff);
                 WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
+            }
+            
+            else if(u8_menuIn == '3') {
+                outString("\n\nExiting setup......\n");
+                outString("\nPlease move SETUP swtich from 'MENU' to 'NORM' and then press"
+                          " any key to return to normal mode.\n");
+                while (!isCharReady()) {}
+                outString("\n\nReturning to normal mode....\n\n");
             }
         }
         else
         {
-            DELAY_MS(500);
+            DELAY_MS(500);      // Wait for SLEEP_INPUT to stabilize before attaching interrupt
     
             _INT1IF = 0;		//clear interrupt flag
             _INT1IP = 2;		//set interrupt priority
@@ -270,9 +239,59 @@ int main(void)
             //disable UART2 to save power.
             U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
             U2STAbits.UTXEN = 0;                      //disable the transmitter
-            while (1)
-            {
+            
+            while (1) {
                 SLEEP();         //macro for asm("pwrsav #0")
+                NOP();          //insert nop after wake from sleep to solve stabiity issues
+                
+                //do code from interrupt here:
+                configHighPower();
+                
+                U2MODEbits.UARTEN = 1;                    // enable UART RX/TX
+                U2STAbits.UTXEN = 1;                      //enable the transmitter
+            
+                if (SLEEP_INPUT)
+                {
+                    u8_polled = 0;
+                    _DOZE = 8; //chose divide by 32
+                    outString("Awake....Reading ADC Data:\n");
+                    sampleProbes(poll);    //sample ADC for redox data, store in data buffer
+                    outChar('\n');
+                    RTCC_Read(&pollData[missed_polls].ts);
+            
+                    int x;
+                    for(x = 0; x < NUM_ADC_PROBES; ++x)
+                    {
+                        pollData[missed_polls].samples[x].f = poll[x].f;
+                    }
+            
+                    while (SLEEP_INPUT)
+                    {
+                        _DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
+                        //outString("Waiting for char\n");
+                        if (isCharReady2())
+                        {
+                            _DOZEN = 0;
+                            outString("Poll Request Received\n");
+                            parseInput();  //satisfy the polling
+                        }
+                    }
+                }
+                if (u8_polled == 0) {
+                    //node woke up but wasn't successfully polled | store data and increment missed_polls
+                    missed_polls = ++missed_polls % MAX_STORED_SAMPLES;    
+                    ++poll_count;
+                    if (poll_count > MAX_STORED_SAMPLES) {
+                        poll_count = MAX_STORED_SAMPLES;
+                    }
+                    outString("ERROR: Poll Did Not Complete\n");
+                    printf("Total Missed Polls: %d\n", missed_polls);
+                }    
+            
+                U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
+                U2STAbits.UTXEN = 0;                      //disable the transmitter
+                SNSL_ConfigLowPower();    
+                _LATB7 = 1;     //cut power to analog circuitry            
             }
         }
     }    
