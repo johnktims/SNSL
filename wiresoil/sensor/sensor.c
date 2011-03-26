@@ -164,8 +164,8 @@ int main(void)
     
     missed_polls = 0x00;
     
-    //outString("Hello World\n");
-    //printResetCause();
+    outString("Hello World\n");
+    printResetCause();
 
     while (1) {
         if (!TEST_SWITCH)
