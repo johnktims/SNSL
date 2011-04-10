@@ -164,8 +164,8 @@ int main(void)
     
     missed_polls = 0x00;
     
-    outString("Hello World\n");
-    printResetCause();
+    //outString("Hello World\n");
+    //printResetCause();
 
     while (1) {
         if (!TEST_SWITCH)
@@ -220,7 +220,7 @@ int main(void)
                 outString("\n\nExiting setup......\n");
                 outString("\nPlease move SETUP swtich from 'MENU' to 'NORM' and then press"
                           " any key to return to normal mode.\n");
-                while (!isCharReady()) {}
+                while (!TEST_SWITCH) {}
                 outString("\n\nReturning to normal mode....\n\n");
             }
         }
