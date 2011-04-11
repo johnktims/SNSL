@@ -16,4 +16,4 @@ void sendPacketChar(char b);
 #define MONITOR_REQUEST_DATA_STATUS  0x33
 #define MONITOR_SEND_DATA_PACKET 0x35
 
-
+#define ACK_PACKET 0x40

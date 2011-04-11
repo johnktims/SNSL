@@ -124,6 +124,7 @@ void RTCC_Set(unionRTCC *ur) {
 //**********************************************************
 
 void RTCC_Read(unionRTCC *ur) {
+    while(!RCFGCALbits.RTCSYNC){}
 	uint8 u8_i;
 	RCFGCALbits.RTCPTR = 3;
 	for(u8_i = 0; u8_i < 4; u8_i++)

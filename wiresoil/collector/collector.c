@@ -137,19 +137,22 @@ void sendStayAwake(void)
 }
 
 
-uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
+uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
 {
     u8_stopPolling = 0;
 
     printf("Polling Node %02X%02X%02X\n", c_ad1, c_ad2, c_ad3);
 
     SendPacketHeader();
-    outChar2(0x02);		//packet length
+    outChar2(0x05);		//packet length
     outChar2(c_ad1);
     outChar2(c_ad2);
     outChar2(c_ad3);
     outChar2(0x03);	//Appdata packet (forward data directly to PIC)
     outChar2(MONITOR_REQUEST_DATA_STATUS);
+    outChar2(hr);
+    outChar2(min);
+    outChar2(sec);
     //puts("---> Sent");
     WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
 
@@ -276,8 +279,22 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3)
         //puts("---> Done writing polls");
         if(remaining_polls != 0x00)
         {
-            doPoll(c_ad1, c_ad2, c_ad3);
+            doPoll(c_ad1, c_ad2, c_ad3, p[3], p[4], p[5]);
         }
+        else if (hr != 0xff) {
+           /* SendPacketHeader();
+            outChar2(0x05);		//packet length
+            outChar2(c_ad1);
+            outChar2(c_ad2);
+            outChar2(c_ad3);
+            outChar2(0x03);	//Appdata packet (forward data directly to PIC)
+            outChar2(ACK_PACKET);
+            outChar2(p[3]);
+            outChar2(p[4]);
+            outChar2(p[5]);
+            //puts("---> Sent");
+            WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();*/
+        }    
         //puts("---> Success");
         return 0x01;
     }
@@ -472,9 +489,8 @@ int main(void)
             }
             else if(u8_menuIn == '6') {
                 outString("\n\nExiting setup......\n");
-                outString("\nPlease move SETUP swtich from 'MENU' to 'NORM' and then press");
-                outString(" any key to return to normal mode.\n");
-                while (!isCharReady()) {}
+                outString("\nPlease move SETUP swtich from 'MENU' to 'NORM' to exit.");
+                while (!TEST_SWITCH) {}
                 outString("\n\nReturning to normal mode....\n\n");
             }    
     
@@ -556,7 +572,8 @@ int main(void)
                                 {
                                     u8_pollReturn = doPoll(polls[u8_i].name[0],
                                     polls[u8_i].name[1],
-                                    polls[u8_i].name[2]);
+                                    polls[u8_i].name[2],
+                                    0xff, 0xff, 0xff);
             
                                     if(u8_pollReturn == 0x01)
                                     {

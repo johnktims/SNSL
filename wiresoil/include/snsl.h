@@ -14,7 +14,9 @@
 #define UNKNOWN_NODE       0xff
 
 #define MAX_STORED_SAMPLES 0x05
-#define NUM_ADC_PROBES 0x0a
+#define NUM_ADC_PROBES     0x0a
+
+#define MESH_SLEEP_MINS    0x05
 
 /***********************************************************
  * RTSP Structures

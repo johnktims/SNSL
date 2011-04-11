@@ -10,8 +10,8 @@
 #define ANALOG_POWER _RB7
 
 /****************************GLOBAL VARIABLES****************************/
-volatile int missed_polls = 0, poll_count = 0;
-volatile uint8 u8_polled = 0;
+volatile int current_poll = 0, poll_count = 0;
+volatile uint8 u8_polled = 0, final_old_ack = 0;
 
 volatile unionRTCC u_RTCC;
 
@@ -71,23 +71,104 @@ void configHighPower(void) {
 /****************************POLLING FUNCTIONS****************************/
 void parseInput(void){
     DELAY_MS(5);
-
-    uint8 u8_c;
+    outString("In Parse Input");
+    uint8 u8_c,
+          u8_hour,
+          u8_min,
+          u8_sec,
+          x, y;
+          
     UFDATA fdata;
     SNSL_GetNodeName(&fdata);
 
     u8_c = inChar2();
+    outChar(u8_c);
+    u8_hour = inChar2();
+    outChar(u8_hour);
+    u8_min  = inChar2();
+    outChar(u8_min);
+    u8_sec  = inChar2();
+    outChar(u8_sec);
+
     //outChar(u8_c);
     //outChar('\n');
     if (u8_c != MONITOR_REQUEST_DATA_STATUS) {
-        outString("REQUEST FAILURE\n");
-        return;
-    }    
-
-    while (!RCFGCALbits.RTCSYNC)
-    {
+        if (u8_c != ACK_PACKET) {
+            outString("REQUEST FAILURE\n");
+            return;
+        }    
     }
-    //RTCC_Read(&u_RTCC);
+    
+    // Request for new data
+    if(u8_hour == 0xff && u8_min == 0xff && u8_sec == 0xff)
+    {
+        RTCC_Read(&u_RTCC);
+        sampleProbes(poll);    //sample ADC for redox data, store in data buffer
+        
+        // If difference between the poll taken at wake and
+        // the current poll is less than the time it takes for
+        // the mesh to cycle, replace the newest poll in the buffer
+        // with the current poll.
+        if(((u_RTCC.u8.hour*360+u_RTCC.u8.min*60+u_RTCC.u8.sec) -
+           (pollData[current_poll].ts.u8.hour*360 +
+            pollData[current_poll].ts.u8.min*60 +
+            pollData[current_poll].ts.u8.sec)) < MESH_SLEEP_MINS*60)
+        {
+            for(x = 0; x < NUM_ADC_PROBES; ++x)
+            {
+                pollData[current_poll].samples[x].f = poll[x].f;
+            }
+            pollData[current_poll].ts = u_RTCC;
+        }
+        
+        // If difference is greater than wake cycle, then push current
+        // poll onto the buffer.
+        else
+        {
+            current_poll = ++current_poll % MAX_STORED_SAMPLES;    
+            ++poll_count;
+            if (poll_count > MAX_STORED_SAMPLES) {
+                poll_count = MAX_STORED_SAMPLES;
+            }
+            for(x = 0; x < NUM_ADC_PROBES; ++x)
+            {
+                pollData[current_poll].samples[x].f = poll[x].f;
+            }
+            pollData[current_poll].ts = u_RTCC;
+        }
+    }
+    
+    // An ACK for the poll data with the given timestamp
+    else
+    {
+        if(((u8_hour*360+u8_min*60+u8_sec) -
+           (pollData[current_poll].ts.u8.hour*360 +
+            pollData[current_poll].ts.u8.min*60 +
+            pollData[current_poll].ts.u8.sec)) == 0)
+        {
+            if (poll_count != 0x00){
+               if (final_old_ack != 1) {
+                   --current_poll;
+                   if (current_poll < 0) {
+                       current_poll = MAX_STORED_SAMPLES;
+                   }    
+                   --poll_count;
+                   if (poll_count == 0x00) {
+                        //We have been ACK'd the 2nd to last old data packet and are sending the final
+                        //packet. Set a flag so we will know if the final data packet isn't ACK'd
+                        final_old_ack = 1;
+                   } 
+               }
+               else {
+                   --poll_count;
+               }    
+            }            
+            else if (u8_c == ACK_PACKET) {
+                final_old_ack = 0;
+            } 
+        }   
+    }
+        
     //packet structure: 0x1E(1)|Packet Length(1)|Packet Type(1)|Remaining polls(1)|Timestamp(6)|Temp data(10)|Redox data(8)|
     //					Reference Voltage(2)|Node Name(12 max)
     SendPacketHeader();
@@ -97,19 +178,18 @@ void parseInput(void){
     outChar2(APP_SMALL_DATA);
     outChar2(poll_count);	//remaining polls
     //outString("MDYHMS");
-    outChar2(pollData[missed_polls].ts.u8.month);
-    outChar2(pollData[missed_polls].ts.u8.date);
-    outChar2(pollData[missed_polls].ts.u8.yr);
-    outChar2(pollData[missed_polls].ts.u8.hour);
-    outChar2(pollData[missed_polls].ts.u8.min);
-    outChar2(pollData[missed_polls].ts.u8.sec);
+    outChar2(pollData[current_poll].ts.u8.month);
+    outChar2(pollData[current_poll].ts.u8.date);
+    outChar2(pollData[current_poll].ts.u8.yr);
+    outChar2(pollData[current_poll].ts.u8.hour);
+    outChar2(pollData[current_poll].ts.u8.min);
+    outChar2(pollData[current_poll].ts.u8.sec);
     
-    int x, y;
     for(x = 0; x < NUM_ADC_PROBES; ++x)
     {
         for(y = 0; y < sizeof(float); ++y)
         {
-            outChar2(pollData[missed_polls].samples[x].s[y]);
+            outChar2(pollData[current_poll].samples[x].s[y]);
         }    
     }    
     //outString2("10tempData");
@@ -117,15 +197,7 @@ void parseInput(void){
     //outString2("rV");
     outString2(fdata.dat.node_name);
     //outString2("12_node_test");
-
-
-    if (poll_count != 0x00){
-        --missed_polls;
-        if (missed_polls < 0) {
-            missed_polls = MAX_STORED_SAMPLES;
-        }    
-        --poll_count;
-    }    
+    
     u8_polled = 1;
     outString("Poll Response Complete\n\n");
 }
@@ -162,7 +234,7 @@ int main(void)
         SNSL_SetNodeName(defaultName);
     }    
     
-    missed_polls = 0x00;
+    current_poll = 0x00;
     
     //outString("Hello World\n");
     //printResetCause();
@@ -218,8 +290,7 @@ int main(void)
             
             else if(u8_menuIn == '3') {
                 outString("\n\nExiting setup......\n");
-                outString("\nPlease move SETUP swtich from 'MENU' to 'NORM' and then press"
-                          " any key to return to normal mode.\n");
+                outString("\nPlease move SETUP swtich from 'MENU' to 'NORM' to exit.");
                 while (!TEST_SWITCH) {}
                 outString("\n\nReturning to normal mode....\n\n");
             }
@@ -257,12 +328,13 @@ int main(void)
                     outString("Awake....Reading ADC Data:\n");
                     sampleProbes(poll);    //sample ADC for redox data, store in data buffer
                     outChar('\n');
-                    RTCC_Read(&pollData[missed_polls].ts);
+                    
+                    RTCC_Read(&pollData[current_poll].ts);
             
                     int x;
                     for(x = 0; x < NUM_ADC_PROBES; ++x)
                     {
-                        pollData[missed_polls].samples[x].f = poll[x].f;
+                        pollData[current_poll].samples[x].f = poll[x].f;
                     }
             
                     while (SLEEP_INPUT)
@@ -276,16 +348,19 @@ int main(void)
                             parseInput();  //satisfy the polling
                         }
                     }
+                    if (final_old_ack == 1) {
+                        poll_count = 1;
+                    }    
                 }
                 if (u8_polled == 0) {
-                    //node woke up but wasn't successfully polled | store data and increment missed_polls
-                    missed_polls = ++missed_polls % MAX_STORED_SAMPLES;    
+                    //node woke up but wasn't successfully polled | store data and increment current_poll
+                    current_poll = ++current_poll % MAX_STORED_SAMPLES;    
                     ++poll_count;
                     if (poll_count > MAX_STORED_SAMPLES) {
                         poll_count = MAX_STORED_SAMPLES;
                     }
                     outString("ERROR: Poll Did Not Complete\n");
-                    printf("Total Missed Polls: %d\n", missed_polls);
+                    printf("Total Missed Polls: %d\n", poll_count);
                 }    
             
                 U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
