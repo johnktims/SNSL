@@ -159,7 +159,7 @@
 
 /** Default BRGH value used by \ref CONFIG_BAUDRATE_UART1 to 4
  *  when configurating a UART. This value may be
- *  overridden on a per-UART basis by \#defineing
+ *  overridden on a per-UART basis by \#defining
  *  \ref DEFAULT_BRGH1 to 4. Allowed values:
  *  - BRGH = 0 - the baud rate divisor is 16
  *  - BRGH = 1 - the baud rate divisor is 4
