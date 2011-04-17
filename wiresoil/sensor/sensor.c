@@ -3,21 +3,22 @@
 #include "snsl.h"
 #include "rtcc.h"
 #include "adc_sample.h"
+
+#include <stdio.h>
 #include <string.h>
 
-#define SLEEP_INPUT _RB9
-#define TEST_SWITCH _RB8
+#define SLEEP_INPUT  _RB9
+#define TEST_SWITCH  _RB8
 #define ANALOG_POWER _RB7
 
 /****************************GLOBAL VARIABLES****************************/
-volatile int current_poll = 0, poll_count = 0;
-volatile uint8 u8_polled = 0, final_old_ack = 0;
+uint8 u8_polled = 0;
 
-volatile unionRTCC u_RTCC;
+unionRTCC u_RTCC;
 
-volatile STORED_SAMPLE pollData[MAX_STORED_SAMPLES];
-volatile STORED_SAMPLE poll_wake,
-                       poll_loop;
+STORED_SAMPLE pollData[MAX_STORED_SAMPLES];
+STORED_SAMPLE poll_wake,
+			  poll_loop;
 
 /****************************PIN CONFIGURATION****************************/
 /// Sleep Input pin configuration
@@ -37,13 +38,15 @@ inline void CONFIG_TEST_SWITCH()
 }
 
 // Analog Power pin configuration
-inline void CONFIG_ANALOG_POWER() {
+inline void CONFIG_ANALOG_POWER()
+{
     CONFIG_RB7_AS_DIG_OD_OUTPUT();
     DELAY_US(1);
 }
 
 //Analog input pin configuration
-inline void CONFIG_ANALOG_INPUTS() {
+inline void CONFIG_ANALOG_INPUTS()
+{
     //configure ADC pins
     CONFIG_AN0_AS_ANALOG();
     CONFIG_AN1_AS_ANALOG();
@@ -58,7 +61,8 @@ inline void CONFIG_ANALOG_INPUTS() {
     DELAY_US(1);
 }
 
-void configHighPower(void) {
+void configHighPower(void)
+{
     CONFIG_SLEEP_INPUT();
     CONFIG_TEST_SWITCH();
 
@@ -70,7 +74,8 @@ void configHighPower(void) {
 }
 
 /****************************POLLING FUNCTIONS****************************/
-void parseInput(void) {
+void parseInput(void)
+{
     DELAY_MS(5);
     outString("In Parse Input");
     uint8 u8_c,
@@ -81,35 +86,32 @@ void parseInput(void) {
     SNSL_GetNodeName(&fdata);
 
     u8_c = inChar2();
-    //outChar(u8_c);
     ack_time.u8.hour = inChar2();
-    //outChar(u8_hour);
     ack_time.u8.min  = inChar2();
-    //outChar(u8_min);
     ack_time.u8.sec  = inChar2();
-    //outChar(u8_sec);
 
-    STORED_SAMPLE *to_send = pollData[SNSL_NewestSample(pollData)];
+    uint8 tmp = SNSL_NewestSample(pollData);
+    STORED_SAMPLE *to_send = &pollData[tmp];
 
-    //outChar(u8_c);
-    //outChar('\n');
-    if (u8_c != MONITOR_REQUEST_DATA_STATUS) {
-        if (u8_c != ACK_PACKET) {
+    if (u8_c != MONITOR_REQUEST_DATA_STATUS)
+    {
+        if (u8_c != ACK_PACKET)
+        {
             outString("REQUEST FAILURE\n");
             return;
         }
     }
 
     // Request for new data
-    if(u8_hour == 0xff && u8_min == 0xff && u8_sec == 0xff)
+    if(ack_time.u8.hour == 0xff && ack_time.u8.min == 0xff && ack_time.u8.sec == 0xff)
     {
         RTCC_Read(&poll_loop.ts);
-        sampleProbes(poll_loop.samples);    //sample ADC for redox data, store in data buffer
+        sampleProbes((FLOAT*)&poll_loop.samples);    //sample ADC for redox data, store in data buffer
         to_send = &poll_loop;
 
         // If difference is greater than wake cycle, then push current
         // poll onto the buffer.
-        if(SNSL_TimeDiff(poll_wake.ts, poll_loop.ts) > MESH_SLEEP_MINS*60)
+        if(SNSL_TimeDiff(poll_wake.ts, poll_loop.ts) > MESH_SLEEP_MINS * 60)
         {
             SNSL_InsertSample(pollData, poll_wake);
         }
@@ -122,13 +124,13 @@ void parseInput(void) {
     }
 
     //packet structure: 0x1E(1)|Packet Length(1)|Packet Type(1)|Remaining polls(1)|Timestamp(6)|Temp data(10)|Redox data(8)|
-    //					Reference Voltage(2)|Node Name(12 max)
+    //                  Reference Voltage(2)|Node Name(12 max)
     SendPacketHeader();
-    uint8 length = 2 + 6 + sizeof(float)*5 + sizeof(float)*4 + sizeof(float) + strlen(fdata.dat.node_name);
+    uint8 length = 2 + 6 + sizeof(float) * 5 + sizeof(float) * 4 + sizeof(float) + strlen((char*)fdata.dat.node_name);
     outChar2(length);
     printf("TX Packet Size: 0x%2x\n", length);
     outChar2(APP_SMALL_DATA);
-    outChar2(SNSL_AvailableSamples(pollData));	//remaining polls
+    outChar2(SNSL_AvailableSamples(pollData));  //remaining polls
     //outString("MDYHMS");
     outChar2(to_send->ts.u8.month);
     outChar2(to_send->ts.u8.date);
@@ -147,7 +149,7 @@ void parseInput(void) {
     //outString2("10tempData");
     //outString2("8redData");
     //outString2("rV");
-    outString2(fdata.dat.node_name);
+    outString2((char*)fdata.dat.node_name);
     //outString2("12_node_test");
 
     u8_polled = 1;
@@ -155,8 +157,9 @@ void parseInput(void) {
 }
 
 /****************************INTERRUPT HANDLERS****************************/
-void _ISRFAST _INT1Interrupt (void) {
-    _INT1IF = 0;		//clear interrupt flag before exiting
+void _ISRFAST _INT1Interrupt (void)
+{
+    _INT1IF = 0;        //clear interrupt flag before exiting
 }
 
 
@@ -165,7 +168,7 @@ int main(void)
 {
     //SNSL_ConfigLowPower();
     configClock();
-    configDefaultUART(DEFAULT_BAUDRATE); //this is UART2
+    configDefaultUART(DEFAULT_BAUDRATE);
     configUART2(DEFAULT_BAUDRATE);
 
     CONFIG_SLEEP_INPUT();
@@ -173,30 +176,33 @@ int main(void)
     CONFIG_ANALOG_POWER();
     CONFIG_ANALOG_INPUTS();
 
-    CONFIG_INT1_TO_RP(9);   //connect interrupt to sleep pin
+    // Connect interrupt to sleep pin
+    CONFIG_INT1_TO_RP(9);
 
+    // Use 32kHz external clock
     __builtin_write_OSCCONL(OSCCON | 0x02);
+
+    // Initialize the Real-Time Clock Calendar
     RTCC_SetDefaultVals(&u_RTCC);
     RTCC_Set(&u_RTCC);
 
+    //
     UFDATA fdata;
     SNSL_GetNodeName(&fdata);
     if (fdata.dat.node_name[0] == 0xFF)
     {
-        char defaultName[] = "default";
-        SNSL_SetNodeName(defaultName);
+        SNSL_SetNodeName(DEFAULT_NODE_NAME);
     }
 
-    current_poll = 0x00;
-
-    //outString("Hello World\n");
-    //printResetCause();
+	SNSL_InitSamplesBuffer(pollData);
 
     while (1)
     {
         if (!TEST_SWITCH)
         {
-            _INT1IE = 0;		//make sure the interrupt is disabled
+            // Disable the sleep interrupt
+            _INT1IE = 0;
+
             uint8 u8_menuIn;
 
             outString("\n\n\nSetup Mode:\n\n");
@@ -234,15 +240,16 @@ int main(void)
                 outString("\nCurrent node name: ");
                 SNSL_PrintNodeName();
                 outString("\n\nEnter new node name [maximum 12 characters]: ");
-                char name_buff[13];
-                inStringEcho(name_buff, 12);
+                uint8 name_buff[13];
+                inStringEcho((char*)name_buff, 12);
                 SNSL_SetNodeName(name_buff);
                 outString("\nNew node name saved. Returning to menu....\n");
                 //outString(name_buff);
                 WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
             }
 
-            else if(u8_menuIn == '3') {
+            else if(u8_menuIn == '3')
+            {
                 outString("\n\nExiting setup......\n");
                 outString("\nPlease move SETUP swtich from 'MENU' to 'NORM' to exit.");
                 while (!TEST_SWITCH) {}
@@ -253,10 +260,10 @@ int main(void)
         {
             DELAY_MS(500);      // Wait for SLEEP_INPUT to stabilize before attaching interrupt
 
-            _INT1IF = 0;		//clear interrupt flag
-            _INT1IP = 2;		//set interrupt priority
-            _INT1EP = 0;		//set rising edge (positive) trigger
-            _INT1IE = 1;		//enable the interrupt
+            _INT1IF = 0;        //clear interrupt flag
+            _INT1IP = 2;        //set interrupt priority
+            _INT1EP = 0;        //set rising edge (positive) trigger
+            _INT1IE = 1;        //enable the interrupt
 
             WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
             //now sleep until next MCLR
@@ -274,14 +281,20 @@ int main(void)
                 configHighPower();
 
                 U2MODEbits.UARTEN = 1;                    // enable UART RX/TX
-                U2STAbits.UTXEN = 1;                      //enable the transmitter
+                U2STAbits.UTXEN   = 1;                    //enable the transmitter
 
                 if (SLEEP_INPUT)
                 {
                     u8_polled = 0;
-                    _DOZE = 8; //chose divide by 32
+
+					// MPLAB cries if doze constant isn't put in
+					// a variable. Casting doesn't seem
+					// to work either.
+					uint8 doze = 8;
+                    _DOZE = doze; //chose divide by 32
+
                     outString("Awake....Reading ADC Data:\n");
-                    sampleProbes(poll_wake.samples);    //sample ADC for redox data, store in data buffer
+                    sampleProbes((FLOAT*)&poll_wake.samples);    //sample ADC for redox data, store in data buffer
                     outChar('\n');
 
                     RTCC_Read(&poll_wake.ts);

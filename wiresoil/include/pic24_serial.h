@@ -95,6 +95,7 @@
 uint8 inChar(void);  //blocking single character input
 void outString(const char* psz_s);
 void outString1(const char* psz_s);
+void outString2(const char* psz_s);
 uint16 inString (char *psz_buff, int16 u16_maxCount);
 uint16 inStringEcho (char *psz_buff, int16 u16_maxCount);
 uint16 inStringEcho1 (char *psz_buff, int16 u16_maxCount);

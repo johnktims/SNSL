@@ -4,30 +4,33 @@
 #include "pic24_all.h"
 #include "vdip.h"
 
-#define HEADER_LEN         0x6
+#define HEADER_LEN         (6)
 #define MAX_NODE_ADDR_LEN  (3+1)
 #define MAX_NODE_NAME_LEN  (12+1)
-#define FILE_NODES         "NODES.TXT"
-#define FILE_CONFIG        "CONFIG.TXT"
+#define FILE_NODES         ((uint8*)"NODES.TXT")
+#define FILE_CONFIG        ((uint8*)"CONFIG.TXT")
+#define FILE_LOG           ((uint8*)"LOG.TXT")
+#define DEFAULT_NODE_NAME  (uint8*)"default"
 
-#define LAST_POLL_FLAG     0xff
-#define UNKNOWN_NODE       0xff
+#define LAST_POLL_FLAG     (0xff)
+#define UNKNOWN_NODE       (0xff)
 
-#define MAX_STORED_SAMPLES 0x05
-#define NUM_ADC_PROBES     0x0a
+#define MAX_STORED_SAMPLES (5)
+#define NUM_ADC_PROBES     (10)
 
-#define MESH_SLEEP_MINS    0x05
+#define MESH_SLEEP_MINS    (5)
 
 #define STATUS_AVAILABLE   (1)
 #define STATUS_UNAVAILABLE (MAX_STORED_SAMPLES + 1)
+
 
 /***********************************************************
  * RTSP Structures
  **********************************************************/
 typedef struct _REC
 {
-  uint8 node_name[MAX_NODE_NAME_LEN];
-}REC;
+    uint8 node_name[MAX_NODE_NAME_LEN];
+} REC;
 
 #define LAST_IMPLEMENTED_PMEM 0x00ABFF
 #define DATA_FLASH_PAGE (((LAST_IMPLEMENTED_PMEM/FLASH_PAGESIZE)*FLASH_PAGESIZE)-FLASH_PAGESIZE)
@@ -42,7 +45,7 @@ typedef union _UFDATA
     // ensures RAM data block is multiple
     // of row size
     uint8 fill[FLASH_DATA_SIZE];
-}UFDATA;
+} UFDATA;
 
 
 /***********************************************************
@@ -52,10 +55,12 @@ typedef struct _POLL
 {
     uint8 name[MAX_NODE_ADDR_LEN],
           attempts;
-}POLL;
+} POLL;
 
-typedef union _unionRTCC {
-    struct { //four 16 bit registers
+typedef union _unionRTCC
+{
+    struct   //four 16 bit registers
+    {
         uint8 yr;
         uint8 null;
         uint8 date;
@@ -64,9 +69,9 @@ typedef union _unionRTCC {
         uint8 wday;
         uint8 sec;
         uint8 min;
-    }u8;
+    } u8;
     uint16 regs[4];
-}unionRTCC;
+} unionRTCC;
 
 typedef union _FLOAT
 {
@@ -86,7 +91,7 @@ typedef struct _STORED_SAMPLE
  **********************************************************/
 void    SNSL_ConfigLowPower(void);
 
-uint8** SNSL_ParseNodeNames(void);
+uint8 **SNSL_ParseNodeNames(void);
 void    SNSL_GetNodeName(UFDATA *);
 void    SNSL_SetNodeName(uint8 *);
 void    SNSL_PrintNodeName(void);
@@ -94,9 +99,9 @@ void    SNSL_PrintNodeName(void);
 void    SNSL_CreateDefaultConfig(void);
 void    SNSL_CreateDefaultNodes(void);
 
-POLL*   SNSL_ParseConfig(uint8 *, uint32 *, uint8 *);
+POLL   *SNSL_ParseConfig(uint8 *, uint32 *, uint8 *);
 void    SNSL_WriteConfig(uint8, uint32, uint8, POLL *);
-POLL*   SNSL_MergeConfig(void);
+POLL   *SNSL_MergeConfig(void);
 void    SNSL_PrintConfig(void);
 uint8   SNSL_SearchConfig(uint8 *, POLL *);
 void    SNSL_ParseConfigHeader(uint8 *, uint32 *, uint8 *);

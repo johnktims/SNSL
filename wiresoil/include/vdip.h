@@ -3,6 +3,7 @@
 
 #include "pic24_all.h"
 
+
 /***********************************************************
  * Pin Mappings
  **********************************************************/
@@ -11,8 +12,8 @@
 #define RESET _LATB13
 #define CONFIG_RESET() CONFIG_RB13_AS_DIG_OUTPUT()
 
-#define CONFIG_VDIP_POWER()	CONFIG_RB7_AS_DIG_OD_OUTPUT(); \
-                            DELAY_US(1)
+#define CONFIG_VDIP_POWER() CONFIG_RB7_AS_DIG_OD_OUTPUT(); \
+        DELAY_US(1)
 
 /***********************************************************
  * Common Characters
@@ -54,11 +55,14 @@
 // Space
 #define SPACE 0x20
 
+// The sync character: E
+#define SYNC_CHAR 0x45
+
 // End of Command
 #define EOC '>'
 
 // SCS: Short Command Set
-#define SCS "SCS"
+#define SCS (uint8*)"SCS"
 
 // The largest filename is 12 characters
 #define MAX_FILENAME_LEN 12+1
@@ -67,28 +71,28 @@
 /***********************************************************
  * Function Definitions
  **********************************************************/
-void   VDIP_Init(void);
-void   VDIP_Reset(void);
-void   VDIP_Sync_E(void);
-uint8  VDIP_Sync(void);
-uint8  VDIP_SCS(void);
+void     VDIP_Init(void);
+void     VDIP_Reset(void);
+void     VDIP_Sync_E(void);
+uint8    VDIP_Sync(void);
+uint8    VDIP_SCS(void);
 
-void   VDIP_WriteFile (const uint8 *,
-                       const uint8 *);
-void   VDIP_WriteFileN(const uint8 *,
-                       const uint8 *,
-                       uint32);
+void     VDIP_WriteFile(const uint8 *,
+                        const uint8 *);
+void     VDIP_WriteFileN(const uint8 *,
+                         const uint8 *,
+                         uint32);
 
-uint8* VDIP_ReadFile(const uint8 *);
-void   VDIP_DeleteFile(const uint8 *);
+uint8   *VDIP_ReadFile(const uint8 *);
+void     VDIP_DeleteFile(const uint8 *);
 
-uint8  VDIP_FileExists(const uint8 *);
-uint32 VDIP_FileSize(const uint8 *);
-uint32 VDIP_DirItemCount(void);
+uint8    VDIP_FileExists(const uint8 *);
+uint32   VDIP_FileSize(const uint8 *);
+uint32   VDIP_DirItemCount(void);
 
-uint8** VDIP_ListDir(void);
-void    VDIP_CleanupDirList(uint8 **);
+uint8  **VDIP_ListDir(void);
+void     VDIP_CleanupDirList(uint8 **);
 
-void VDIP_PrintListDir(void);
+void     VDIP_PrintListDir(void);
 
 #endif // VDIP_H
