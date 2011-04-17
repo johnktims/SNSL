@@ -8,8 +8,8 @@
 
 /****************************GLOBAL VARIABLES****************************/
 volatile uint8 u8_numHops, u8_failureLimit, u8_stopPolling,
-               u8_pollsCompleted, u8_pollsIgnored, u8_pollsFailed, 
-               u8_newFileName, psz_out[128];
+         u8_pollsCompleted, u8_pollsIgnored, u8_pollsFailed,
+         u8_newFileName, psz_out[128];
 
 volatile uint32 u32_hopTimeout;
 
@@ -53,9 +53,9 @@ inline void CONFIG_SLEEP_TIME(void)
 void configHighPower(void)
 {
     /*  SNSL_configLowPower resets all pins to be analog inputs in
-    *   order to save power. As such, we have to re-define all of
-    *   the digital I/O pins when we come out of low power mode
-    */
+     *  order to save power. As such, we have to re-define all of
+     *  the digital I/O pins when we come out of low power mode
+     */
     _LATB7 = 0;		//enable power to VDIP
     CONFIG_SLEEP_INPUT();
     CONFIG_TEST_SWITCH();
@@ -69,7 +69,7 @@ void configHighPower(void)
 void configTimer23(void)
 {
     T2CON = T2_OFF | T2_IDLE_CON | T2_GATE_OFF | T2_32BIT_MODE_ON
-    | T2_SOURCE_INT | T2_PS_1_1;
+            | T2_SOURCE_INT | T2_PS_1_1;
 }
 
 void startTimer23(void)
@@ -83,7 +83,7 @@ void startTimer23(void)
     TMR2 = 0;           // Clear timer2 value
     _T3IF = 0;          // Clear interrupt flag
     _T3IP = 3;          // Set timer interrupt priority (must
-                        //    be higher than sleep interrupt)
+    //    be higher than sleep interrupt)
     _T3IE = 1;          // Enable timer interrupt
     T2CONbits.TON = 1;  // Start the timer
 }
@@ -94,13 +94,13 @@ uint8 blocking_inChar(void)
     uint8 u8_char = '~';
     startTimer23();
     // Wait for character
-    while(!isCharReady2() && !u8_stopPolling){}
+    while(!isCharReady2() && !u8_stopPolling) {}
     if(!u8_stopPolling)
     {
         T2CONbits.TON = 0;
         u8_char = inChar2();
     }
-    
+
     //printf("char input: %c | %x\n", u8_char, u8_char);
     return u8_char;
 }
@@ -165,17 +165,17 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
     }
 
     uint8 tmp,
-    packet_length = 0,
-    remaining_polls = 0,
-    u8_char;
+          packet_length = 0,
+          remaining_polls = 0,
+          u8_char;
 
     //puts("---> Parsing Header");
     for(tmp = 0; tmp < 7; tmp++)    //full packet header == 7 bytes (header (1) | node address (3 bytes) | packet type (1)
-    {                               //                               | size (1) | remaining polls (1)
+    {   //                               | size (1) | remaining polls (1)
         u8_char = blocking_inChar();
         if (u8_char == 0 && tmp == 0) {
             u8_char = blocking_inChar();
-        }    
+        }
         //printf("char input: %c | %x\n", u8_char, u8_char);
         if(u8_char == '~')
         {
@@ -187,7 +187,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
             if(tmp == 4)
             {
                 packet_length = u8_char - 2;    //subtract 2 to remove packet header and packet type from length
-                
+
             }
             else if(tmp == 6)
             {
@@ -199,7 +199,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
     //printf("Remaining polls: `%u`\n", remaining_polls);
     //puts("---> Parse Packet");
     for(tmp = 0; tmp < packet_length; ++tmp)    //packet message == packet_length (max 58 == size-2)
-    {                                           //this loop reads in remainder of packet message
+    {   //this loop reads in remainder of packet message
         u8_char = blocking_inChar();
         if(u8_char == '~')
         {
@@ -226,7 +226,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
             outChar(' ');
         }
         outString("\n");
-        
+
         // Print out the packet in binary
         /*for(tmp = 0; tmp < size-1; ++tmp)
         {
@@ -241,7 +241,7 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
             psz_node_name[i-nameStart] = poll_data[i];
         }
         psz_node_name[i-nameStart] = 0x0;
-        
+
         printf("NODE NAME: `%s`\n", psz_node_name);
 
         FLOAT probes[10];
@@ -254,27 +254,27 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
 
         //date(MM/DD/YYY),time(HH:MM:SS),1.250,vref,sp1,sp2,sp3,sp4,temp1,temp2,temp3,temp4,temp5,nodeName
         uint8 psz_fmt[] =
-        "%02x/%02x/%02x,"                // timestamp [MM/DD/YY]
-        "%02x:%02x:%02x,"                // timestamp [HH:MM:SS]
-        "1.250,"                         // some voltage reference (constant value)
-        "%3.3f,"                         // battery voltage
-        "%3.3f,%3.3f,%3.3f,%3.3f,"       // redox samples
-        "%3.3f,%3.3f,%3.3f,%3.3f,%3.3f," // temperature samples
-        "%s\n";                          // node name
-        
+            "%02x/%02x/%02x,"                // timestamp [MM/DD/YY]
+            "%02x:%02x:%02x,"                // timestamp [HH:MM:SS]
+            "1.250,"                         // some voltage reference (constant value)
+            "%3.3f,"                         // battery voltage
+            "%3.3f,%3.3f,%3.3f,%3.3f,"       // redox samples
+            "%3.3f,%3.3f,%3.3f,%3.3f,%3.3f," // temperature samples
+            "%s\n";                          // node name
+
         uint8* p = poll_data;
         sprintf(psz_out, psz_fmt,
-        p[0],p[1],p[2],p[3],p[4],p[5], // Timestamp
-        probes[0].f,                   // battery voltage
-        probes[1].f, probes[2].f, probes[3].f, probes[4].f, // redox samples
-        probes[5].f, probes[6].f, probes[7].f, probes[8].f, probes[9].f, // temperature samples
-        psz_node_name); // node name
+                p[0],p[1],p[2],p[3],p[4],p[5], // Timestamp
+                probes[0].f,                   // battery voltage
+                probes[1].f, probes[2].f, probes[3].f, probes[4].f, // redox samples
+                probes[5].f, probes[6].f, probes[7].f, probes[8].f, probes[9].f, // temperature samples
+                psz_node_name); // node name
         psz_out[127] = 0x0;
 
         printf("FORMATTED PACKET:%s", psz_out);
         //outString(psz_out);
-        
-       // puts("---> Writing File");
+
+        // puts("---> Writing File");
         VDIP_WriteFile(filename, psz_out);
         //puts("---> Done writing polls");
         if(remaining_polls != 0x00)
@@ -282,19 +282,19 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
             doPoll(c_ad1, c_ad2, c_ad3, p[3], p[4], p[5]);
         }
         else if (hr != 0xff) {
-           /* SendPacketHeader();
-            outChar2(0x05);		//packet length
-            outChar2(c_ad1);
-            outChar2(c_ad2);
-            outChar2(c_ad3);
-            outChar2(0x03);	//Appdata packet (forward data directly to PIC)
-            outChar2(ACK_PACKET);
-            outChar2(p[3]);
-            outChar2(p[4]);
-            outChar2(p[5]);
-            //puts("---> Sent");
-            WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();*/
-        }    
+            /* SendPacketHeader();
+             outChar2(0x05);		//packet length
+             outChar2(c_ad1);
+             outChar2(c_ad2);
+             outChar2(c_ad3);
+             outChar2(0x03);	//Appdata packet (forward data directly to PIC)
+             outChar2(ACK_PACKET);
+             outChar2(p[3]);
+             outChar2(p[4]);
+             outChar2(p[5]);
+             //puts("---> Sent");
+             WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();*/
+        }
         //puts("---> Success");
         return 0x01;
     }
@@ -363,14 +363,14 @@ int main(void)
 
     u8_stopPolling = 0;
     configTimer23();
-    
+
     while (!RCFGCALbits.RTCSYNC) {
-    }    
+    }
     RTCC_Read(&u_RTCCatStartup);
     //RTCC_Print(&u_RTCC);
     //printf("Month: %2x Day: %2x Year: %2x\n", (uint16)u_RTCCatStartup.u8.month,
     //        (uint16)u_RTCCatStartup.u8.date, (uint16)u_RTCCatStartup.u8.yr);
-    
+
     while (1) {
 
         if(!TEST_SWITCH)
@@ -384,10 +384,10 @@ int main(void)
                 continue;
             }
             uint8 u8_menuIn,
-            u8_numHops,
-            u8_failureLimit;
+                  u8_numHops,
+                  u8_failureLimit;
             uint32 u32_hopTimeout;
-    
+
             outString("\n\n\n");
             outString("Setup Mode:\n\n");
             outString("Choose an option -\n");
@@ -399,15 +399,15 @@ int main(void)
             outString("6. Exit Setup\n");
             outString("--> ");
             u8_menuIn = inCharEcho();
-    
+
             /*if (u8_menuIn != '6') {
                 outString("\n\nInitilizing Setup. Please wait....\n\n");
-            }  */  
+            }  */
             //VDIP_Init();
-    
+
             SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
             POLL *polls = SNSL_MergeConfig();
-    
+
             if(u8_menuIn == '1')
             {
                 outString("\n\nSetting Clock:\n");
@@ -439,7 +439,7 @@ int main(void)
                 char hops_buff[4];
                 inStringEcho(hops_buff, 3);
                 u8_numHops = (uint8)SNSL_Atoi(hops_buff);
-                outString("\nNew number of hops saved. Returning to menu....\n");    
+                outString("\nNew number of hops saved. Returning to menu....\n");
                 WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
             }
             else if(u8_menuIn == '3')
@@ -447,7 +447,7 @@ int main(void)
                 outString("\n\nSetting timeout value:\n");
                 outString("\nThis value is the timeout per network hop (default is 300ms).\n");
                 printf("\nCurrent timeout value: %lu\n", u32_hopTimeout);
-    
+
                 outString("New timeout value (milliseconds)[0300-9999]: ");
                 uint8 timeout_buff[5];
                 inStringEcho(timeout_buff, 4);
@@ -465,8 +465,8 @@ int main(void)
             {
                 outString("\n\nSetting new failure threshold:\n");
                 outString("\nThis value is the number of failures to respond "
-                "a sensor node has before it will be ignored.\n"
-                "\nCurrent failure limit: ");
+                          "a sensor node has before it will be ignored.\n"
+                          "\nCurrent failure limit: ");
                 outUint8Decimal(u8_failureLimit);
                 outString("\nNew failure limit [001-255]: ");
                 char failure_buff[4];
@@ -492,8 +492,8 @@ int main(void)
                 outString("\nPlease move SETUP swtich from 'MENU' to 'NORM' to exit.");
                 while (!TEST_SWITCH) {}
                 outString("\n\nReturning to normal mode....\n\n");
-            }    
-    
+            }
+
             SNSL_WriteConfig(u8_numHops, u32_hopTimeout, u8_failureLimit, polls);
             free(polls);
         }
@@ -503,127 +503,133 @@ int main(void)
             _INT1IF = 0;    // Clear interrupt flag
             _INT1IP = 2;    // Set interrupt priority
             _INT1EP = 0;    // Set rising edge (positive) trigger
-            _INT1IE = 1;    // Enable the interrupt 
-            
-            _LATB7 = 1;     // Cut power to VDIP    
+            _INT1IE = 1;    // Enable the interrupt
+
+            _LATB7 = 1;     // Cut power to VDIP
             u8_newFileName = 1;
-            
-            while (1) {
+
+            while (1)
+            {
                 SLEEP();
                 NOP();      //insert nop after wake from sleep to solve stabiity issues
-                
+
                 //do code from interrupt here
                 configHighPower();
-            
-                
+
+
                 uint8 u8_pollReturn = 0;
                 POLL *polls;
                 u8_pollsCompleted = u8_pollsIgnored = u8_pollsFailed = 0;
-            
+
                 while(SLEEP_INPUT)
                 {
-                    if(isCharReady2())
+                    if(!isCharReady2() && isMeshUp() != 0x01)
                     {
-                        if(isMeshUp() == 0x01)
-                        {
-                            sendStayAwake();
-                            WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
-            
-                            VDIP_Init();
-                            
-                            //outString("Checking disk: \n");
-                            if(!VDIP_DiskExists())
-                            {
-                                outString("VDIP does NOT exist\n");
-                                sendEndPoll();
-                                continue;
-                            }
-            
-                            uint8 fileCount = 1;
-                            if(u8_newFileName)
-                            {
-                                sprintf(filename, "%02x%02x%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, fileCount);
-                                printf("Evaluating: `%s`\n", filename);
-                                while(VDIP_FileExists(filename))
-                                {
-                                    sprintf(filename, "%02x%02x%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, ++fileCount);
-                                    printf("Evaluating: `%s`\n", filename);
-                                }
-                                //outString("out of while\n");
-                                printf("New filename: `%s`\n", filename);
-                                u8_newFileName = 0;
-                                VDIP_Sync();
-                            }
-                            //sprintf(filename, "data.txt");
-            
-                            polls = SNSL_MergeConfig();
-                            //puts("--- Printing MergeConfig");
-                            //SNSL_PrintPolls(polls);
-                            
-                            SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
-                            //u32_hopTimeout = 300;
-                            uint8 u8_i = 0;
-            
-                            RTCC_Read(&u_RTCC);
-                            SNSL_LogPollEvent(0x00, &u_RTCC);  //log polling started
-                            while(polls[u8_i].attempts != LAST_POLL_FLAG)
-                            {
-                                if(polls[u8_i].attempts <= u8_failureLimit)
-                                {
-                                    u8_pollReturn = doPoll(polls[u8_i].name[0],
-                                    polls[u8_i].name[1],
-                                    polls[u8_i].name[2],
-                                    0xff, 0xff, 0xff);
-            
-                                    if(u8_pollReturn == 0x01)
-                                    {
-                                        polls[u8_i].attempts = 0;
-                                        u8_pollsCompleted++;
-                                    }
-                                    else if(u8_pollReturn == 0x00)
-                                    {
-                                        ++polls[u8_i].attempts;
-                                        RTCC_Read(&u_RTCC);
-            
-                                        SNSL_LogResponseFailure(polls[u8_i].attempts, polls[u8_i].name[0],
-                                                                polls[u8_i].name[1], polls[u8_i].name[2],
-                                                                &u_RTCC);
-                                        u8_pollsFailed++;
-                                    }
-                                    else if (u8_pollReturn == 0x02){
-                                        RTCC_Read(&u_RTCC);
-                                        polls[u8_i].attempts = 0;
-                                        SNSL_LogResponseFailure(polls[u8_i].attempts, polls[u8_i].name[0],
-                                                                polls[u8_i].name[1], polls[u8_i].name[2],
-                                                                &u_RTCC);
-                                    }    
-                                }
-                                else
-                                {
-                                    //log node was ignored
-                                    RTCC_Read(&u_RTCC);
-                                    SNSL_LogNodeSkipped(polls[u8_i].name[0],
-                                                        polls[u8_i].name[1],
-                                                        polls[u8_i].name[2],
-                                                        &u_RTCC);
-                                    u8_pollsIgnored++;
-                                }
-                                ++u8_i;
-                            }
-                            sendEndPoll();
-                            SNSL_WriteConfig(u8_numHops, u32_hopTimeout, u8_failureLimit, polls);
-                            free(polls);
-            
-                            RTCC_Read(&u_RTCC);
-                            SNSL_LogPollEvent(0x01, &u_RTCC);  //log polling stopped*/
-                            SNSL_LogPollingStats(&u_RTCC, u8_pollsCompleted, u8_pollsIgnored, u8_pollsFailed);
-                        }
+                        continue;
                     }
+
+                    sendStayAwake();
+                    WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
+
+                    VDIP_Init();
+
+                    //outString("Checking disk: \n");
+                    if(!VDIP_DiskExists())
+                    {
+                        outString("VDIP does NOT exist\n");
+                        sendEndPoll();
+                        continue;
+                    }
+
+                    uint8 fileCount = 1;
+                    if(u8_newFileName)
+                    {
+                        sprintf(filename, "%02x%02x%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, fileCount);
+                        printf("Evaluating: `%s`\n", filename);
+                        while(VDIP_FileExists(filename))
+                        {
+                            sprintf(filename, "%02x%02x%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, ++fileCount);
+                            printf("Evaluating: `%s`\n", filename);
+                        }
+                        //outString("out of while\n");
+                        printf("New filename: `%s`\n", filename);
+                        u8_newFileName = 0;
+                        VDIP_Sync();
+                    }
+                    //sprintf(filename, "data.txt");
+
+                    polls = SNSL_MergeConfig();
+                    //puts("--- Printing MergeConfig");
+                    //SNSL_PrintPolls(polls);
+
+                    SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
+                    //u32_hopTimeout = 300;
+                    uint8 u8_i = 0;
+
+                    RTCC_Read(&u_RTCC);
+                    SNSL_LogPollEvent(0x00, &u_RTCC);  //log polling started
+                    while(polls[u8_i].attempts != LAST_POLL_FLAG)
+                    {
+                        if(polls[u8_i].attempts <= u8_failureLimit)
+                        {
+                            u8_pollReturn = doPoll(polls[u8_i].name[0],
+                                                   polls[u8_i].name[1],
+                                                   polls[u8_i].name[2],
+                                                   0xff, 0xff, 0xff);
+
+                            if(u8_pollReturn == 0x01)
+                            {
+                                polls[u8_i].attempts = 0;
+                                u8_pollsCompleted++;
+                            }
+                            else if(u8_pollReturn == 0x00)
+                            {
+                                ++polls[u8_i].attempts;
+                                RTCC_Read(&u_RTCC);
+
+                                SNSL_LogResponseFailure(polls[u8_i].attempts, polls[u8_i].name[0],
+                                                        polls[u8_i].name[1], polls[u8_i].name[2],
+                                                        &u_RTCC);
+                                u8_pollsFailed++;
+                            }
+                            else if (u8_pollReturn == 0x02) {
+                                RTCC_Read(&u_RTCC);
+                                polls[u8_i].attempts = 0;
+                                SNSL_LogResponseFailure(polls[u8_i].attempts, polls[u8_i].name[0],
+                                                        polls[u8_i].name[1], polls[u8_i].name[2],
+                                                        &u_RTCC);
+                            }
+                        }
+                        else
+                        {
+                            //log node was ignored
+                            RTCC_Read(&u_RTCC);
+                            SNSL_LogNodeSkipped(polls[u8_i].name[0],
+                                                polls[u8_i].name[1],
+                                                polls[u8_i].name[2],
+                                                &u_RTCC);
+                            u8_pollsIgnored++;
+                        }
+                        ++u8_i;
+                    }
+                    sendEndPoll();
+                    SNSL_WriteConfig(u8_numHops, u32_hopTimeout, u8_failureLimit, polls);
+                    free(polls);
+
+                    // Log the time at which we stopped polling the sensor nodes
+                    RTCC_Read(&u_RTCC);
+                    SNSL_LogPollEvent(0x01, &u_RTCC);
+                    SNSL_LogPollingStats(&u_RTCC, u8_pollsCompleted, u8_pollsIgnored, u8_pollsFailed);
+
                 }
-                _LATB7 = 1;					//cut power to VDIP
-                SNSL_ConfigLowPower();      //return to low power        
-            }    
+
+                // Turn the VDIP off
+                _LATB7 = 1;
+
+                // Return to low-power mode
+                SNSL_ConfigLowPower();
+            }
         }
-    }    
+    }
     return 0;
 }

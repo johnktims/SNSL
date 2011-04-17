@@ -65,7 +65,7 @@ uint8** SNSL_ParseNodeNames(void)
     printf("Nodes found: `%u`\n", (unsigned)u32_nodes);
     printf("Delim width: `%u`\n", (unsigned)u32_delimiter_width);
     printf("Size of NODES.TXT: `%u`\n", (unsigned)u32_size);
-    
+
     printf("Output in hex: ");
     uint32 u32_i = 0;
     for(u32_i = 0; u32_i < u32_size; ++u32_i)
@@ -74,7 +74,7 @@ uint8** SNSL_ParseNodeNames(void)
     }
     printf("\n\n");
     */
-    
+
     // Allocate space - node addresses are fixed
     // at three characters.
     uint8 **psz_nodes = (uint8**)malloc(sizeof(uint8*) * (u32_nodes + 1));
@@ -105,9 +105,9 @@ uint8** SNSL_ParseNodeNames(void)
             //printf("h:`%u`,`%u` `%c`, `0x%02X`, `%c`,`%d`,`0x%X`\n",
             //    u8_node, u8_index, sz_hex[0], sz_hex[1], u8_hex, u8_hex, u8_hex);
             //printf("0x%02X", u8_hex);
-            
+
             psz_nodes[u8_node][u8_index] = u8_hex;
-            
+
             //printf("psz_nodes[%u][%u] = 0x%02X;\n", u8_node, u8_index, u8_hex);
         }
         ++u8_node;
@@ -116,7 +116,7 @@ uint8** SNSL_ParseNodeNames(void)
 
     // Null terminate the array so it will be easy to traverse
     psz_nodes[u32_nodes] = '\0';
-    
+
     free(psz_data);
 
     return psz_nodes;
@@ -573,8 +573,8 @@ void SNSL_LogPollEvent(uint8 type, unionRTCC *u_RTCC)
     }
 
     log_out[49] = 0x0;
-    printf("\n----->%s", log_out);
-    //outString("\n---->" + log_out);
+    outString("\n----->");
+    outString(log_out);
     VDIP_WriteFile("LOG.TXT", log_out);
 }
 
@@ -706,10 +706,10 @@ void SNSL_CreateDefaultConfig(void)
     LAST_POLL.attempts = LAST_POLL_FLAG;
     SNSL_WriteConfig(4, (uint32)300, 16, &LAST_POLL);
     VDIP_Sync();
-    
+
     POLL *polls = SNSL_MergeConfig();
     SNSL_WriteConfig(4, (uint32)300, 16, polls);
-    
+
     puts("SNSL_Creating config: merge");
     SNSL_PrintPolls(polls);
     free(polls);
@@ -724,4 +724,140 @@ void SNSL_PrintPolls(POLL *polls)
         polls[i].name[1], polls[i].name[2], polls[i].attempts);
         ++i;
     }
+}
+
+void SNSL_InitSamplesBuffer(STORED_SAMPLE *samples)
+{
+    uint8 x;
+    for(x = 0; x < MAX_STORED_SAMPLES; ++x)
+    {
+        samples[x].ts.u8.yr    = 0;
+        samples[x].ts.u8.date  = 0;
+        samples[x].ts.u8.month = 0;
+        samples[x].ts.u8.hour  = 0;
+        samples[x].ts.u8.wday  = 0;
+        samples[x].ts.u8.min   = 0;
+        samples[x].ts.u8.sec   = 0;
+
+        samples[x].status = STATUS_UNAVAILABLE;
+    }
+}
+
+int SNSL_TimeToSec(unionRTCC t1)
+{
+    /*
+     * This function needs to take months and days
+     * into account, otherwise we'll get incorrect
+     * readings when we change at these edge
+     * conditions
+     */
+    return t1.u8.hour * 3600 +
+           t1.u8.min  * 60  +
+           t1.u8.sec;
+}
+
+int SNSL_TimeDiff(unionRTCC t1, unionRTCC t2)
+{
+    return abs(SNSL_TimeToSec(t1) - SNSL_TimeToSec(t2));
+}
+
+uint8 SNSL_OldestSample(STORED_SAMPLE *samples)
+{
+    int x,
+        tmp,
+        oldest_index = 0,
+        oldest_value = 0;
+
+    for(x = 0; x < MAX_STORED_SAMPLES; ++x)
+    {
+        tmp = SNSL_TimeToSec(samples[x].ts);
+        if(tmp > oldest_value)
+        {
+            oldest_value = tmp;
+            oldest_index = x;
+        }
+    }
+
+    return oldest_index;
+}
+
+uint8 SNSL_AvailableSamples(STORED_SAMPLE *samples)
+{
+    uint8 x,
+          available = 0;
+
+    for(x = 0; x < MAX_STORED_SAMPLES; ++x)
+    {
+        if(samples[x].status == STATUS_UNAVAILABLE)
+        {
+            ++available;
+        }
+    }
+    return available;
+}
+
+uint8 SNSL_FirstAvailableSample(STORED_SAMPLE *samples)
+{
+    uint8 x;
+
+    for(x = 0; x < MAX_STORED_SAMPLES; ++x)
+    {
+        if(samples[x].status == STATUS_UNAVAILABLE)
+        {
+            return x;
+        }
+    }
+    
+    return STATUS_UNAVAILABLE;
+}
+
+void SNSL_InsertSample(STORED_SAMPLE *samples, STORED_SAMPLE sample)
+{
+    uint8 x,
+        len = SNSL_AvailableSamples(samples);
+
+    if(len > 0)
+    {
+        x = SNSL_FirstAvailableSample(samples);
+    }
+    else
+    {
+        x = SNSL_OldestSample(samples);
+    }
+    sample.status = STATUS_AVAILABLE;
+    samples[x] = sample;
+}
+
+uint8 SNSL_NewestSample(STORED_SAMPLE *samples)
+{
+    int x,
+        tmp,
+        newest_index,
+        newest_value;
+
+    newest_value = SNSL_TimeToSec(samples[0].ts);
+
+    for(x = 1; x < MAX_STORED_SAMPLES; ++x)
+    {
+        tmp = SNSL_TimeToSec(samples[x].ts);
+        if(tmp < newest_value)
+        {
+            newest_value = tmp;
+            newest_index = x;
+        }
+    }
+
+    return newest_index;
+}
+
+void SNSL_PrintSamples(STORED_SAMPLE *samples)
+{
+    uint8 x;
+
+    for(x = 0; x < MAX_STORED_SAMPLES; ++x)
+    {
+        printf("Time[%d] = hr:%d; min:%d; sec:%d; status: %d\n", x,
+        samples[x].ts.u8.hour, samples[x].ts.u8.min, samples[x].ts.u8.sec, samples[x].status);
+    }
+    puts("----------------------");
 }

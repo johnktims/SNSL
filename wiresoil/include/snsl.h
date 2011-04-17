@@ -18,6 +18,9 @@
 
 #define MESH_SLEEP_MINS    0x05
 
+#define STATUS_AVAILABLE   (1)
+#define STATUS_UNAVAILABLE (MAX_STORED_SAMPLES + 1)
+
 /***********************************************************
  * RTSP Structures
  **********************************************************/
@@ -53,14 +56,14 @@ typedef struct _POLL
 
 typedef union _unionRTCC {
     struct { //four 16 bit registers
-                uint8 yr;
-                uint8 null;
-                uint8 date;
-                uint8 month;
-                uint8 hour;
-                uint8 wday;
-                uint8 sec;
-                uint8 min;
+        uint8 yr;
+        uint8 null;
+        uint8 date;
+        uint8 month;
+        uint8 hour;
+        uint8 wday;
+        uint8 sec;
+        uint8 min;
     }u8;
     uint16 regs[4];
 }unionRTCC;
@@ -75,6 +78,7 @@ typedef struct _STORED_SAMPLE
 {
     FLOAT samples[NUM_ADC_PROBES];
     unionRTCC ts;
+    int8 status;
 } STORED_SAMPLE;
 
 /***********************************************************
@@ -104,6 +108,16 @@ void    SNSL_LogPollingStats(unionRTCC *, uint8, uint8, uint8);
 
 uint32  SNSL_Pow(uint8, uint8);
 uint32  SNSL_Atoi(uint8 *);
-void SNSL_PrintPolls(POLL *);
+void    SNSL_PrintPolls(POLL *);
+
+void    SNSL_InitSamplesBuffer(STORED_SAMPLE *);
+int     SNSL_TimeToSec(unionRTCC);
+int     SNSL_TimeDiff(unionRTCC, unionRTCC);
+uint8   SNSL_OldestSample(STORED_SAMPLE *);
+uint8   SNSL_AvailableSamples(STORED_SAMPLE *);
+uint8   SNSL_FirstAvailableSample(STORED_SAMPLE *);
+void    SNSL_InsertSample(STORED_SAMPLE *, STORED_SAMPLE);
+uint8   SNSL_NewestSample(STORED_SAMPLE *);
+void    SNSL_PrintSamples(STORED_SAMPLE *);
 
 #endif // SNSL_H
