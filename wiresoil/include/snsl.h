@@ -119,5 +119,6 @@ uint8   SNSL_FirstAvailableSample(STORED_SAMPLE *);
 void    SNSL_InsertSample(STORED_SAMPLE *, STORED_SAMPLE);
 uint8   SNSL_NewestSample(STORED_SAMPLE *);
 void    SNSL_PrintSamples(STORED_SAMPLE *);
+uint8   SNSL_ACKSample(STORED_SAMPLE *, unionRTCC);
 
 #endif // SNSL_H

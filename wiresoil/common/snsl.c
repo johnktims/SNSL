@@ -807,7 +807,7 @@ uint8 SNSL_FirstAvailableSample(STORED_SAMPLE *samples)
             return x;
         }
     }
-    
+
     return STATUS_UNAVAILABLE;
 }
 
@@ -860,4 +860,20 @@ void SNSL_PrintSamples(STORED_SAMPLE *samples)
         samples[x].ts.u8.hour, samples[x].ts.u8.min, samples[x].ts.u8.sec, samples[x].status);
     }
     puts("----------------------");
+}
+
+uint8 SNSL_ACKSample(STORED_SAMPLE *samples, unionRTCC t1)
+{
+    uint8 x;
+
+    for(x = 0; x < MAX_STORED_SAMPLES; ++x)
+    {
+        if(SNSL_TimeDiff(samples[x].ts, t1) == 0)
+        {
+            samples[x].status = STATUS_AVAILABLE;
+            return 1;
+        }
+    }
+
+    return 0;
 }
