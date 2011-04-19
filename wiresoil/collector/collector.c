@@ -523,11 +523,14 @@ int main(void)
 
                 while(SLEEP_INPUT)
                 {
-                    if(!isCharReady2() && isMeshUp() != 0x01)
+                    /*if(!isCharReady2() && isMeshUp() != 0x01)
                     {
                         continue;
-                    }
-
+                    }*/
+                    if(isCharReady2())
+                    {
+                        if(isMeshUp() == 0x01)
+                        {
                     sendStayAwake();
                     WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
 
@@ -620,7 +623,8 @@ int main(void)
                     RTCC_Read(&u_RTCC);
                     SNSL_LogPollEvent(0x01, &u_RTCC);
                     SNSL_LogPollingStats(&u_RTCC, u8_pollsCompleted, u8_pollsIgnored, u8_pollsFailed);
-
+                    }
+                        }
                 }
 
                 // Turn the VDIP off
