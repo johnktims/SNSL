@@ -727,9 +727,13 @@ int SNSL_TimeToSec(unionRTCC t1)
      * readings when we change at these edge
      * conditions
      */
-    return t1.u8.hour * 3600 +
-           t1.u8.min  * 60   +
-           t1.u8.sec;
+     uint8 hr, min, sec;
+     hr = ((t1.u8.hour / 16)*10) + (t1.u8.hour % 16);
+     min = ((t1.u8.min / 16)*10) + (t1.u8.min % 16);
+     sec = ((t1.u8.sec / 16)*10) + (t1.u8.sec % 16);
+    return hr * 3600 +
+           min  * 60   +
+           sec;
 }
 
 int SNSL_TimeDiff(unionRTCC t1, unionRTCC t2)
@@ -741,6 +745,41 @@ uint8 SNSL_OldestSample(STORED_SAMPLE *samples)
 {
     int x,
         tmp,
+        count = 0,
+        newest_index = STATUS_INVALID,
+        newest_value;
+
+    for(x = 0; x < MAX_STORED_SAMPLES; ++x)
+    {
+        if(samples[x].status != STATUS_IN_USE)
+        {
+            continue;
+        }
+        
+        ++count;
+        
+        if(count == 1)
+        {
+            newest_value = SNSL_TimeToSec(samples[x].ts);
+            newest_index = x;
+            continue;
+        }
+        
+        tmp = SNSL_TimeToSec(samples[x].ts);
+
+        if(tmp < newest_value)
+        {
+            newest_value = tmp;
+            newest_index = x;
+        }
+    }
+
+    return newest_index;
+}
+/*
+{
+    int x,
+        tmp,
         oldest_index = 0,
         oldest_value = 0;
 
@@ -748,7 +787,7 @@ uint8 SNSL_OldestSample(STORED_SAMPLE *samples)
     {
         tmp = SNSL_TimeToSec(samples[x].ts);
 
-        if(tmp > oldest_value)
+        if(tmp < oldest_value)
         {
             oldest_value = tmp;
             oldest_index = x;
@@ -757,6 +796,7 @@ uint8 SNSL_OldestSample(STORED_SAMPLE *samples)
 
     return oldest_index;
 }
+*/
 
 uint8 SNSL_TotalReplaceableSamples(STORED_SAMPLE *samples)
 {
@@ -825,7 +865,7 @@ uint8 SNSL_NewestSample(STORED_SAMPLE *samples)
         newest_index = STATUS_INVALID,
         newest_value;
 
-    for(x = 1; x < MAX_STORED_SAMPLES; ++x)
+    for(x = 0; x < MAX_STORED_SAMPLES; ++x)
     {
         if(samples[x].status != STATUS_IN_USE)
         {
@@ -843,7 +883,7 @@ uint8 SNSL_NewestSample(STORED_SAMPLE *samples)
         
         tmp = SNSL_TimeToSec(samples[x].ts);
 
-        if(tmp < newest_value)
+        if(tmp > newest_value)
         {
             newest_value = tmp;
             newest_index = x;
@@ -859,7 +899,7 @@ void SNSL_PrintSamples(STORED_SAMPLE *samples)
 
     for(x = 0; x < MAX_STORED_SAMPLES; ++x)
     {
-        printf("Time[%d] = hr:%d; min:%d; sec:%d; status: %d\n", x,
+        printf("Time[%d] = hr:%X; min:%X; sec:%X; status: %d\n", x,
                samples[x].ts.u8.hour, samples[x].ts.u8.min, samples[x].ts.u8.sec, samples[x].status);
     }
 

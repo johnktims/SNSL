@@ -277,12 +277,9 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
         // puts("---> Writing File");
         VDIP_WriteFile(filename, psz_out);
         //puts("---> Done writing polls");
-        if(remaining_polls != 0x00)
-        {
-            doPoll(c_ad1, c_ad2, c_ad3, p[3], p[4], p[5]);
-        }
-        else if (hr != 0xff) {
-            /* SendPacketHeader();
+        if (remaining_polls == 0x01 && hr != 0xff) {
+            // send ACK packet
+             SendPacketHeader();
              outChar2(0x05);		//packet length
              outChar2(c_ad1);
              outChar2(c_ad2);
@@ -293,7 +290,11 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
              outChar2(p[4]);
              outChar2(p[5]);
              //puts("---> Sent");
-             WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();*/
+             WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
+        }    
+        else if(remaining_polls != 0x00)
+        {
+            doPoll(c_ad1, c_ad2, c_ad3, p[3], p[4], p[5]);
         }
         //puts("---> Success");
         return 0x01;
