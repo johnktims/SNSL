@@ -78,6 +78,8 @@ void parseInput(void)
 {
     DELAY_MS(5);
     outString("In Parse Input");
+    SNSL_PrintSamples(pollData);
+    
     uint8 u8_c,
           x, y;
 
@@ -92,6 +94,7 @@ void parseInput(void)
 
     uint8 tmp = SNSL_NewestSample(pollData);
     STORED_SAMPLE *to_send = &pollData[tmp];
+    printf("parseInput; Newest index: %d", tmp);
 
     if (u8_c != MONITOR_REQUEST_DATA_STATUS)
     {
@@ -121,6 +124,10 @@ void parseInput(void)
     else
     {
         SNSL_ACKSample(pollData, ack_time);
+        SNSL_PrintSamples(pollData);
+        tmp = SNSL_NewestSample(pollData);
+        to_send = &pollData[tmp];
+        printf("ACKd; Newest index: %d", tmp);
     }
 
     //packet structure: 0x1E(1)|Packet Length(1)|Packet Type(1)|Remaining polls(1)|Timestamp(6)|Temp data(10)|Redox data(8)|
@@ -130,7 +137,7 @@ void parseInput(void)
     outChar2(length);
     printf("TX Packet Size: 0x%2x\n", length);
     outChar2(APP_SMALL_DATA);
-    outChar2(SNSL_AvailableSamples(pollData));  //remaining polls
+    outChar2(SNSL_TotalSamplesInUse(pollData));  //remaining polls
     //outString("MDYHMS");
     outChar2(to_send->ts.u8.month);
     outChar2(to_send->ts.u8.date);
@@ -299,7 +306,9 @@ int main(void)
 
                     RTCC_Read(&poll_wake.ts);
 
-
+                    outString("On wake\n");
+                    SNSL_PrintSamples(pollData);
+    
                     while (SLEEP_INPUT)
                     {
                         _DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
@@ -317,7 +326,7 @@ int main(void)
                     //node woke up but wasn't successfully polled | store data and increment current_poll
                     SNSL_InsertSample(pollData, poll_wake);
                     outString("ERROR: Poll Did Not Complete\n");
-                    printf("Total Missed Polls: %d\n", SNSL_AvailableSamples(pollData));
+                    printf("Total Missed Polls: %d\n", SNSL_TotalSamplesInUse(pollData));
                 }
 
                 U2MODEbits.UARTEN = 0;                    // disable UART RX/TX

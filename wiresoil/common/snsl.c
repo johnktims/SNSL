@@ -715,7 +715,7 @@ void SNSL_InitSamplesBuffer(STORED_SAMPLE *samples)
         samples[x].ts.u8.wday  = 0;
         samples[x].ts.u8.min   = 0;
         samples[x].ts.u8.sec   = 0;
-        samples[x].status = STATUS_UNAVAILABLE;
+        samples[x].status = STATUS_REPLACEABLE;
     }
 }
 
@@ -728,7 +728,7 @@ int SNSL_TimeToSec(unionRTCC t1)
      * conditions
      */
     return t1.u8.hour * 3600 +
-           t1.u8.min  * 60  +
+           t1.u8.min  * 60   +
            t1.u8.sec;
 }
 
@@ -758,52 +758,62 @@ uint8 SNSL_OldestSample(STORED_SAMPLE *samples)
     return oldest_index;
 }
 
-uint8 SNSL_AvailableSamples(STORED_SAMPLE *samples)
+uint8 SNSL_TotalReplaceableSamples(STORED_SAMPLE *samples)
+{
+    return SNSL_TotalByStatus(samples, STATUS_REPLACEABLE);
+}
+
+uint8 SNSL_TotalSamplesInUse(STORED_SAMPLE *samples)
+{
+    return SNSL_TotalByStatus(samples, STATUS_IN_USE);
+}
+
+uint8 SNSL_TotalByStatus(STORED_SAMPLE *samples, uint8 status)
 {
     uint8 x,
           available = 0;
 
     for(x = 0; x < MAX_STORED_SAMPLES; ++x)
     {
-        if(samples[x].status == STATUS_UNAVAILABLE)
+        if(samples[x].status == status)
         {
             ++available;
         }
     }
 
     return available;
-}
+}    
 
-uint8 SNSL_FirstAvailableSample(STORED_SAMPLE *samples)
+uint8 SNSL_FirstReplaceableSample(STORED_SAMPLE *samples)
 {
     uint8 x;
 
     for(x = 0; x < MAX_STORED_SAMPLES; ++x)
     {
-        if(samples[x].status == STATUS_UNAVAILABLE)
+        if(samples[x].status == STATUS_REPLACEABLE)
         {
             return x;
         }
     }
 
-    return STATUS_UNAVAILABLE;
+    return STATUS_INVALID;
 }
 
 void SNSL_InsertSample(STORED_SAMPLE *samples, STORED_SAMPLE sample)
 {
     uint8 x,
-          len = SNSL_AvailableSamples(samples);
+          len = SNSL_TotalReplaceableSamples(samples);
 
     if(len > 0)
     {
-        x = SNSL_FirstAvailableSample(samples);
+        x = SNSL_FirstReplaceableSample(samples);
     }
     else
     {
         x = SNSL_OldestSample(samples);
     }
 
-    sample.status = STATUS_AVAILABLE;
+    sample.status = STATUS_IN_USE;
     samples[x] = sample;
 }
 
@@ -811,12 +821,26 @@ uint8 SNSL_NewestSample(STORED_SAMPLE *samples)
 {
     int x,
         tmp,
-        newest_index,
+        count = 0,
+        newest_index = STATUS_INVALID,
         newest_value;
-    newest_value = SNSL_TimeToSec(samples[0].ts);
 
     for(x = 1; x < MAX_STORED_SAMPLES; ++x)
     {
+        if(samples[x].status != STATUS_IN_USE)
+        {
+            continue;
+        }
+        
+        ++count;
+        
+        if(count == 1)
+        {
+            newest_value = SNSL_TimeToSec(samples[x].ts);
+            newest_index = x;
+            continue;
+        }
+        
         tmp = SNSL_TimeToSec(samples[x].ts);
 
         if(tmp < newest_value)
@@ -850,7 +874,7 @@ uint8 SNSL_ACKSample(STORED_SAMPLE *samples, unionRTCC t1)
     {
         if(SNSL_TimeDiff(samples[x].ts, t1) == 0)
         {
-            samples[x].status = STATUS_AVAILABLE;
+            samples[x].status = STATUS_REPLACEABLE;
             return 1;
         }
     }

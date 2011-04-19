@@ -10,7 +10,7 @@
 #define FILE_NODES         ((uint8*)"NODES.TXT")
 #define FILE_CONFIG        ((uint8*)"CONFIG.TXT")
 #define FILE_LOG           ((uint8*)"LOG.TXT")
-#define DEFAULT_NODE_NAME  (uint8*)"default"
+#define DEFAULT_NODE_NAME  ((uint8*)"default")
 
 #define LAST_POLL_FLAG     (0xff)
 #define UNKNOWN_NODE       (0xff)
@@ -20,8 +20,9 @@
 
 #define MESH_SLEEP_MINS    (5)
 
-#define STATUS_AVAILABLE   (1)
-#define STATUS_UNAVAILABLE (MAX_STORED_SAMPLES + 1)
+#define STATUS_REPLACEABLE (0)
+#define STATUS_IN_USE      (1)
+#define STATUS_INVALID     (MAX_STORED_SAMPLES + 1)
 
 
 /***********************************************************
@@ -118,11 +119,16 @@ void    SNSL_PrintPolls(POLL *);
 void    SNSL_InitSamplesBuffer(STORED_SAMPLE *);
 int     SNSL_TimeToSec(unionRTCC);
 int     SNSL_TimeDiff(unionRTCC, unionRTCC);
-uint8   SNSL_OldestSample(STORED_SAMPLE *);
-uint8   SNSL_AvailableSamples(STORED_SAMPLE *);
-uint8   SNSL_FirstAvailableSample(STORED_SAMPLE *);
-void    SNSL_InsertSample(STORED_SAMPLE *, STORED_SAMPLE);
+
+uint8   SNSL_TotalByStatus(STORED_SAMPLE *, uint8);
+uint8   SNSL_TotalSamplesInUse(STORED_SAMPLE *);
+uint8   SNSL_TotalReplaceableSamples(STORED_SAMPLE *);
+
+uint8   SNSL_FirstReplaceableSample(STORED_SAMPLE *);
 uint8   SNSL_NewestSample(STORED_SAMPLE *);
+uint8   SNSL_OldestSample(STORED_SAMPLE *);
+
+void    SNSL_InsertSample(STORED_SAMPLE *, STORED_SAMPLE);
 void    SNSL_PrintSamples(STORED_SAMPLE *);
 uint8   SNSL_ACKSample(STORED_SAMPLE *, unionRTCC);
 
