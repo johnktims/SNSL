@@ -164,10 +164,10 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
         poll_data[i] = 0x00;
     }
 
-    uint8 tmp,
-          packet_length = 0,
-          remaining_polls = 0,
-          u8_char;
+    volatile uint8 tmp,
+                   packet_length = 0,
+                   remaining_polls = 0,
+                   u8_char;
 
     //puts("---> Parsing Header");
     for(tmp = 0; tmp < 7; tmp++)    //full packet header == 7 bytes (header (1) | node address (3 bytes) | packet type (1)
