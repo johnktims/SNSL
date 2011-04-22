@@ -652,10 +652,7 @@ uint32 SNSL_Atoi(uint8 *str)
           u8_j = 0;
 
     // Count numbers in array
-    while(str[++u8_i])
-    {
-        ;
-    }
+    while(str[++u8_i]);
 
     --u8_i;
     u32_return = 0;

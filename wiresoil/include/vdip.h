@@ -86,6 +86,7 @@ void     VDIP_WriteFileN(const uint8 *,
 uint8   *VDIP_ReadFile(const uint8 *);
 void     VDIP_DeleteFile(const uint8 *);
 
+uint8    VDIP_DiskExists(void);
 uint8    VDIP_FileExists(const uint8 *);
 uint32   VDIP_FileSize(const uint8 *);
 uint32   VDIP_DirItemCount(void);
