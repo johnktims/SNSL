@@ -4,9 +4,9 @@
 #include "rtcc.h"
 #include "vdip.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h>  //for 'printf' | 'sprintf'
+#include <stdlib.h> // for 'free'
+#include <string.h> // for 'memcpy'
 
 
 /***********************************************************
@@ -27,7 +27,7 @@ char filename[13],
 
 
 /***********************************************************
- * Assign Pins
+ * Pin Assignment Macros
  ***********************************************************/
 #define SLEEP_INPUT (_RB14)
 #define TEST_SWITCH (_RA2)
@@ -36,7 +36,7 @@ char filename[13],
 
 
 /***********************************************************
- * Configure Pins
+ * Pin configuration functions
  ***********************************************************/
 
  /**********************************************************
@@ -102,7 +102,12 @@ void configHighPower(void)
 
 /**********************************************************
  *
- * @brief Get us out of the polling loop
+ * @brief Polling timeout timer
+ * @note  A 32-bit timer is used as a polling timeout
+ *        so that we don't wait forever on a node to
+ *        to respond. Each PIC timer is 16-bit, so timers
+ *        2 and 3 have to be chained together to get 32-bit
+ *        resolution. See pg. 510-513 in PIC24 Micro book.
  *
  **********************************************************/
 void configTimer23(void)
@@ -125,6 +130,41 @@ void startTimer23(void)
     T2CONbits.TON = 1;  // Start the timer
 }
 
+/**********************************************************
+ * Interrupt Handlers
+ **********************************************************/
+
+/**********************************************************
+ *
+ * @breif Wake PIC from sleep
+ * @note  This interrupt exists only to wake the PIC from
+ *        sleep mode. It is attached to the SLEEP_INPUT
+ *        pin and is configured to fire whenever on the
+ *        rising edge of that pin. As such, it's only duty
+ *        is to clear its own flag.
+ *
+ **********************************************************/
+void _ISRFAST _INT1Interrupt(void)
+{
+    _INT1IF = 0;        //clear interrupt flag
+}
+
+/**********************************************************
+ *
+ * @breif Stop waiting for data input
+ * @note  This interrupt fires whenever the timout timer
+ *        expires. This is used to return from the blocking
+ *        input read function and to denote that the node
+ *        being polled is not going to respond.
+ *
+ **********************************************************/
+void _ISRFAST _T3Interrupt(void)
+{
+    u8_stopPolling = 1;
+    T2CONbits.TON  = 0;             //stop the timer
+    outString("Timer Expired\n");
+    _T3IF = 0;                      //clear interrupt flag
+}
 
 /**********************************************************
  * Polling Functions
@@ -135,7 +175,8 @@ void startTimer23(void)
  * @brief  Wait for a character from the wireless module
  * @return The received character
  * @note   If we don't receive a character, we will wait
- *         until the
+ *         until the timeout fires and return to the calling
+ *         function.
  *
  **********************************************************/
 uint8 blocking_inChar(void)
@@ -160,6 +201,10 @@ uint8 blocking_inChar(void)
  *
  * @brief  Determine whether or not the mesh is awake
  * @return 1 if the mesh is up, and 0 otherwise
+ * @note   This function reads in a message over UART-2 from
+ *         the SNAP module. Once the SNAP has woken the 
+ *         mesh, it sends a message to the PIC letting it
+ *         know that it can begin the polling process.
  *
  **********************************************************/
 uint8 isMeshUp(void)
@@ -182,34 +227,15 @@ uint8 isMeshUp(void)
     return 0;
 }
 
-
-/**********************************************************
- * Interrupt Handlers
- **********************************************************/
-
 /**********************************************************
  *
- * @brief This interrupt exists only to wake the PIC from
- *        sleep mode. It is attached to the SLEEP_INPUT
- *        pin and is configured to fire whenever on the
- *        rising edge of that pin. As such, it's only duty
- *        is to clear its own flag.
+ * @brief  Lock mesh in awake mode
+ * @note   This function sends a message to the SNAP module
+ *         instructing it to lock the mesh into awake mode.
+ *         This is used so that the mesh doesn't try to go
+ *         to sleep while we're in the middle of polling.
  *
  **********************************************************/
-void _ISRFAST _INT1Interrupt(void)
-{
-    _INT1IF = 0;        //clear interrupt flag
-}
-
-void _ISRFAST _T3Interrupt(void)
-{
-    u8_stopPolling = 1;
-    T2CONbits.TON  = 0;             //stop the timer
-    outString("Timer Expired\n");
-    _T3IF = 0;                      //clear interrupt flag
-}
-
-
 void sendStayAwake(void)
 {
     //Packet Format: 0x1E + length + groupID LSB + grpID MSB + TTL + 0x02 + 'sleepyNodeFalse'
@@ -223,29 +249,43 @@ void sendStayAwake(void)
     outString2(sz_data);
 }
 
-
+/**********************************************************
+ *
+ * @brief  Poll a sensor node and get its data
+ * @input  c_ad1 | c_ad2 | c_ad3 : node address to poll
+ *         hr | min | sec: timestamp to send as ACK
+ * @return 0 if failed and we're logging failures | 1 if 
+ *         successful | 2 if failed and we're not logging
+ *         failures
+ * @note   This function polls the supplied node and sends
+ *         the supplied timestamp as an ACK.
+ *
+ **********************************************************/
 uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
 {
+    /*Send data request message to node*/
     u8_stopPolling = 0;
     printf("Polling Node %02X%02X%02X\n", c_ad1, c_ad2, c_ad3);
     SendPacketHeader();
     outChar2(0x05);     //packet length
-    outChar2(c_ad1);
+    outChar2(c_ad1);    //node address
     outChar2(c_ad2);
     outChar2(c_ad3);
     outChar2(0x03); //Appdata packet (forward data directly to PIC)
     outChar2(MONITOR_REQUEST_DATA_STATUS);
-    outChar2(hr);
+    outChar2(hr);   //ACK timestamp
     outChar2(min);
     outChar2(sec);
 
     WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
+    /*This is the maximum input packet size for a data point
+    size = (2 for required header fields [packet type and header]) + timestamp (6B) + 5 temperatures (4B*5=20B) + 
+            4 redox values (4B*5 = 16B) + reference voltage (4B) + node name (12B)*/
     uint8 size = 2 + 6 + sizeof(float) * 5 + sizeof(float) * 4 + sizeof(float) + 12; // == 60
     uint8 poll_data[size];
     uint8 i = 0;
 
     // Clear out the  poll buffer
-    // TODO: optimize with memset
     for(i = 0; i < size; ++i)
     {
         poll_data[i] = 0;
@@ -256,31 +296,44 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
              remaining_polls = 0,
              u8_char;
 
-    // Parse header
+    // Parse received packet header
     // full packet header == 7 bytes
-    // (header (1) | node address (3 bytes) | packet type (1)
-    // | size (1) | remaining polls (1)
+    // (header (1B) | node address (3B) | packet type (1B) | size (1B) | remaining polls (1B)
     for(tmp = 0; tmp < 7; tmp++)
     {
-        u8_char = blocking_inChar();
+        u8_char = blocking_inChar();    //read in header
 
+        /* For some reason, the SNAP likes to send a 0 before the packet header. This
+        *  statement looks for the 0 and throws it out, then calls the read again so we
+        *  don't get off on our input count*/
         if(u8_char == 0 && tmp == 0)
         {
             u8_char = blocking_inChar();
         }
 
+        /* If the retrun value from blocking_inChar() is ever '~", then we know that the 
+        *  timeout interrupt fired and we never got any data. We should then stop the polling
+        *  process and return that the poll failed.*/
         if(u8_char == '~')
         {
             u8_stopPolling = 1;
             break;
         }
+        
+        /* If we get to here, the we can actually start reading in the data we want*/
         else
         {
+            /* Save the packet length so we know how much more data to read in. Packet length
+            *  is the 6th byte, but we throw away the header at the beginning, hence the 4th byte
+            *  we read in is the length.*/
             if(tmp == 4)
             {
-                // Subtract 2 to remove packet header and packet type from length
+                /*The SNAP requires that the header and type fields are included in the packet
+                * length, so we have to subtract 2 to get the length of the data field.*/
                 packet_length = u8_char - 2;
             }
+            /* We also need to know if there are any remaining data points that the sensor has
+            *  so we can retrieve them later*/
             else if(tmp == 6)
             {
                 remaining_polls = u8_char;
@@ -288,13 +341,14 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
         }
     }
 
-    // Parse remaining bytes in packet
-    // packet message == packet_length
-    // (max 58 == size-2)
+    /* Parse remaining bytes in packet*/
     for(tmp = 0; tmp < packet_length; ++tmp)
     {
         u8_char = blocking_inChar();
 
+        /* If the retrun value from blocking_inChar() is ever '~", then we know that the 
+        *  timeout interrupt fired and we never got any data. We should then stop the polling
+        *  process and return that the poll failed.*/
         if(u8_char == '~')
         {
             u8_stopPolling = 1;
@@ -306,11 +360,14 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
         }
     }
 
+    /* Now that we have all of the data, we need to format it and log it out. If we've gotten to
+    *  this point and we haven't had a read error (u8_stopPolling == 0), then we can continue*/
     if(!u8_stopPolling)
     {
+        /* Null-terminate packet data so we know where to stop.*/
         poll_data[packet_length] = '\0';
 
-        // Print out the packet in ascii hex
+        // Print raw packet data in hex to the debug output
         outString("RAW PACKET:");
         tmp = 0;
 
@@ -319,9 +376,12 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
             outUint8(poll_data[tmp]);
             outChar(' ');
         }
-
         outString("\n");
-        uint8 nameStart = size - 12 - 2;    //size - 2 == max packet message - max node name size == start of node name
+        
+        //Calculate where the start of the node name is
+        //size - 2 == max packet message - header bytes - max node name size == start of node name
+        uint8 nameStart = size - 12 - 2;
+        
         // Variable-length node name, so put it in a null-terminated string for easy output
         char psz_node_name[MAX_NODE_NAME_LEN];
 
@@ -331,16 +391,25 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
         }
 
         psz_node_name[i - nameStart] = 0x0;
+        
+        //Print node name to debug output
         printf("NODE NAME: `%s`\n", psz_node_name);
 
+        /*Use the FLOAT union defined in snsl.h to convert the read in character strings to 
+        * printable float values. We have 10 values we have to convert to floats (5 temps | 4 redox | 1 ref),
+        * so create an array of FLOAT unions to hold these values.*/
         FLOAT probes[10];
         int x, offset = 6;
 
+        /*Start copying out of the poll_data holder into the FLOAT unions. We have to skip over
+        * the 6 bytes of timestamp data, so we set offset to 6 then add the size of a float to it every
+        * iteration*/
         for(x = 0; x < 10; offset += sizeof(float), ++x)
         {
             memcpy(probes[x].s, poll_data + offset, sizeof(float));
         }
 
+        /*Format and assemble the data point into the form it will be logged*/
         // Date(MM/DD/YYY),time(HH:MM:SS),1.250,vref,sp1,sp2,sp3,sp4,temp1,temp2,temp3,temp4,temp5,nodeName
         char psz_fmt[] =
             "%02x/%02x/%02x,"                // timestamp [MM/DD/YY]
@@ -357,13 +426,15 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
                 probes[1].f, probes[2].f, probes[3].f, probes[4].f, // redox samples
                 probes[5].f, probes[6].f, probes[7].f, probes[8].f, probes[9].f, // temperature samples
                 psz_node_name); // node name
-        psz_out[127] = 0x0;
+        psz_out[127] = 0x0; //null terminate for easy printing
 
-        printf("FORMATTED PACKET:%s", psz_out);
+        printf("FORMATTED PACKET:%s", psz_out); //print formatted packet to the debug output
 
-        VDIP_WriteFile((uint8 *)filename, (uint8 *)psz_out);
+        VDIP_WriteFile((uint8 *)filename, (uint8 *)psz_out);    //write the data point to the data file
 
-        // If this is the final response from the sensor, send an ACK
+        /* If we are not sending a new data poll request (hr != 0xff) and we have received the last
+        *  old data point (remaining_polls == 0x01) send the single ACK packet with the timestamp of
+        *  the point we just received*/
         if(remaining_polls == 0x01 && hr != 0xff)
         {
             SendPacketHeader();
@@ -378,26 +449,38 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
             outChar2(p[5]);
             WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
         }
+        /* Otherwise, if we have remaining data points to retrieve, call doPoll again with the timestamp
+        *  of the point we just received*/
         else if(remaining_polls != 0x00)
         {
             doPoll(c_ad1, c_ad2, c_ad3, p[3], p[4], p[5]);
         }
 
-        return 0x01;
+        return 0x01;    //the poll was successful
     }
     else if(SLEEP_TIME)
     {
-        // Record node response failure
-        // Don't record failure if in mesh setup mode (SLEEP_PIN == HIGH)
+        /* If the SLEEP_TIME pin is HIGH, we are in normal mode, so we need to return that
+        *  the poll request failed and we want to record the failure*/
         return 0x00;
     }
     else
     {
-        // Polling failed, but don't log it.
+        /* If the SLEEP_TIME pin is LOW, we are in setup mode, so we don't want to record
+        *  that the node failed. Return that the poll request failed, but note that we don't
+        *  don't want to record this*/
         return 0x02;
     }
 }
 
+/**********************************************************
+ *
+ * @brief  Return mesh to normal mode
+ * @note   This function sends a message to the SNAP module
+ *         instructing it that polling is finished, and it
+ *         needs to return the mesh to normal mode.
+ *
+ **********************************************************/
 void sendEndPoll(void)
 {
     const char sz_data[] = "pollingStopped";
@@ -432,13 +515,10 @@ int main(void)
     while(!RCFGCALbits.RTCSYNC);
 
     RTCC_Read(&u_RTCCatStartup);
-    //RTCC_Print(&u_RTCC);
-    //printf("Month: %2x Day: %2x Year: %2x\n", (uint16)u_RTCCatStartup.u8.month,
-    //        (uint16)u_RTCCatStartup.u8.date, (uint16)u_RTCCatStartup.u8.yr);
 
     while(1)
     {
-        if(!TEST_SWITCH)
+        if(!TEST_SWITCH)    //we are in setup mode, so print the config menu
         {
             VDIP_Init();
 
@@ -465,10 +545,7 @@ int main(void)
             outString("6. Exit Setup\n");
             outString("--> ");
             u8_menuIn = inCharEcho();
-            /*if (u8_menuIn != '6') {
-                outString("\n\nInitilizing Setup. Please wait....\n\n");
-            }  */
-            //VDIP_Init();
+
             SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
             POLL *polls = SNSL_MergeConfig();
 
@@ -476,9 +553,7 @@ int main(void)
             {
                 outString("\n\nSetting Clock:\n");
                 RTCC_GetDateFromUserNoWday(&u_RTCC);
-                //outString("\n\nInitializing clock....");
                 RTCC_Set(&u_RTCC);
-                //outString("\nTesting clock (press any key to end):\n");
                 RTCC_Read(&u_RTCCatStartup);
                 outString("\n\nClock set. Returning to menu....\n");
                 WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
@@ -511,7 +586,6 @@ int main(void)
                 return value seems to overflow to the max int size. This isn't a
                 problem due to the constraints set to 4 digits, so it's being
                 ignored*/
-                //printf("Timeout: %lu\n", u32_hopTimeout);
                 outString("\nNew timeout value saved. Returning to menu....\n");
                 WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
             }
@@ -570,18 +644,20 @@ int main(void)
             {
                 SLEEP();
                 NOP();      //insert nop after wake from sleep to solve stabiity issues
-                //do code from interrupt here
-                configHighPower();
+
+                /* we've woken up from sleep, so we need to poll all of the sensor nodes
+                *  and then return to sleep*/
+                configHighPower();  //reconfigure pins from low-power to high-power mode
                 uint8 u8_pollReturn = 0;
                 POLL *polls;
                 u8_pollsCompleted = u8_pollsIgnored = u8_pollsFailed = 0;
 
+                /* SLEEP_INPUT is the wire from the SNAP module that we use to wake up.
+                *  While the mesh is asleep, SLEEP_INPUT is LOW. When the mesh wakes, SLEEP_INPUT
+                *  goes high, the interrupt fires, and we wake from the above SLEEP() loop. We 
+                *  stay awake while the SLEEP_INPUT line is HIGH*/
                 while(SLEEP_INPUT)
                 {
-                    /*if(!isCharReady2() && isMeshUp() != 0x01)
-                    {
-                        continue;
-                    }*/
                     if(isCharReady2())
                     {
                         if(isMeshUp() == 0x01)
@@ -590,57 +666,64 @@ int main(void)
                             WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
                             VDIP_Init();
 
-                            //outString("Checking disk: \n");
+                            /*Check to see if VDIP is present. If not, return mesh to sleep and
+                            * check again on the next cycle*/
                             if(!VDIP_DiskExists())
                             {
-                                outString("VDIP does NOT exist\n");
+                                outString("ERROR: VDIP does not exist. Returning to sleep.\n");
                                 sendEndPoll();
                                 continue;
                             }
 
+                            /* This block is used to calculate what the filename for the data output file
+                            *  should be. The file name is always the month and day of the last time the 
+                            *  collector was turned on, plus another number to differentiate it if there are
+                            *  multiple files present with the same month and day combination.*/
                             uint8 fileCount = 1;
-
                             if(u8_newFileName)
                             {
                                 sprintf(filename, "%02x%02x%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, fileCount);
-                                printf("Evaluating: `%s`\n", filename);
 
                                 while(VDIP_FileExists((uint8 *)filename))
                                 {
                                     sprintf(filename, "%02x%02x%02d.TXT", u_RTCCatStartup.u8.month, u_RTCCatStartup.u8.date, ++fileCount);
-                                    printf("Evaluating: `%s`\n", filename);
                                 }
-
-                                //outString("out of while\n");
-                                printf("New filename: `%s`\n", filename);
-                                u8_newFileName = 0;
+                                
+                                u8_newFileName = 0; //use this flag so that we only change the file name during the first poll after power up
                                 VDIP_Sync();
                             }
-
-                            //sprintf(filename, "data.txt");
+                            
+                            /* Get the list of node names and their response failures from the VDIP NODES.TXT and CONFIG.TXT files*/
                             polls = SNSL_MergeConfig();
-                            //puts("--- Printing MergeConfig");
-                            //SNSL_PrintPolls(polls);
+
+                            /* Get the remaining user configured settings from CONFIG.TXT*/
                             SNSL_ParseConfigHeader(&u8_numHops, &u32_hopTimeout, &u8_failureLimit);
-                            //u32_hopTimeout = 300;
+
+                            /* Start polling: log polling started event with timestamp*/
                             uint8 u8_i = 0;
                             RTCC_Read(&u_RTCC);
                             SNSL_LogPollEvent(0x00, &u_RTCC);  //log polling started
 
+                            /* The structure has a dummy entry at teh end (similar to null-terminated) so we know when to stop
+                            *  looping over the structure*/
                             while(polls[u8_i].attempts != LAST_POLL_FLAG)
                             {
+                                /* Check that the current node hasn't failed more times than the threshold*/
                                 if(polls[u8_i].attempts <= u8_failureLimit)
                                 {
+                                    /*Send first poll request of cycle to node w/ 0xff as timestamp to indicate this is the first request*/
                                     u8_pollReturn = doPoll(polls[u8_i].name[0],
                                                            polls[u8_i].name[1],
                                                            polls[u8_i].name[2],
                                                            0xff, 0xff, 0xff);
-
+                                    /*Poll was successful, reset failure count and increment total poll count for this cycle*/
                                     if(u8_pollReturn == 0x01)
                                     {
                                         polls[u8_i].attempts = 0;
                                         u8_pollsCompleted++;
                                     }
+                                    /*Poll failed, and we're logging failures, so increment failure count, log the response failure
+                                    * in the log file and increment the total failures for this cycle*/
                                     else if(u8_pollReturn == 0x00)
                                     {
                                         ++polls[u8_i].attempts;
@@ -650,6 +733,7 @@ int main(void)
                                                                 &u_RTCC);
                                         u8_pollsFailed++;
                                     }
+                                    /*Poll failed, but we're not tracking failures. Keep failure count at 0, but log that the failure occured*/
                                     else if(u8_pollReturn == 0x02)
                                     {
                                         RTCC_Read(&u_RTCC);
@@ -659,9 +743,10 @@ int main(void)
                                                                 &u_RTCC);
                                     }
                                 }
+                                /*The node has exceeded the failure threshold, so it was ignored. Log that it was ignored and increment the
+                                * total ignored count for this cycle*/
                                 else
                                 {
-                                    //log node was ignored
                                     RTCC_Read(&u_RTCC);
                                     SNSL_LogNodeSkipped(polls[u8_i].name[0],
                                                         polls[u8_i].name[1],
@@ -674,9 +759,10 @@ int main(void)
                             }
 
                             sendEndPoll();
+                            /*Write out the response failures to CONFIG.TXT*/
                             SNSL_WriteConfig(u8_numHops, u32_hopTimeout, u8_failureLimit, polls);
                             free(polls);
-                            // Log the time at which we stopped polling the sensor nodes
+                            /*Log that polling has stopped and log out the statistics for this polling cycle*/
                             RTCC_Read(&u_RTCC);
                             SNSL_LogPollEvent(0x01, &u_RTCC);
                             SNSL_LogPollingStats(&u_RTCC, u8_pollsCompleted, u8_pollsIgnored, u8_pollsFailed);

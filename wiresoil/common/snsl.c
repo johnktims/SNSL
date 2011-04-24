@@ -894,7 +894,7 @@ void SNSL_PrintSamples(STORED_SAMPLE *samples)
                samples[x].ts.u8.hour, samples[x].ts.u8.min, samples[x].ts.u8.sec, samples[x].status);
     }
 
-    puts("----------------------");
+    puts("----------------------\n");
 }
 
 uint8 SNSL_ACKSample(STORED_SAMPLE *samples, RTCC t1)

@@ -4,16 +4,8 @@
 #include "rtcc.h"
 #include "adc_sample.h"
 
-#include <stdio.h>  // printf
-#include <string.h> // malloc
-
-
-/***********************************************************
- * Macro Definitions
- **********************************************************/
-#define SLEEP_INPUT   _RB9
-#define TEST_SWITCH   _RB8
-#define ANALOG_POWER  _RB7
+#include <stdio.h>  //for 'printf' | 'sprintf'
+#include <string.h> //for 'memcpy'
 
 /***********************************************************
  * Global Variables
@@ -27,19 +19,34 @@ STORED_SAMPLE pollData[MAX_STORED_SAMPLES];
 STORED_SAMPLE poll_wake,
               poll_loop;
 
+/***********************************************************
+ * Pin Assignment Macros
+ **********************************************************/
+#define SLEEP_INPUT   _RB9
+#define TEST_SWITCH   _RB8
+#define ANALOG_POWER  _RB7
 
 /***********************************************************
- * Pin Configurations
+ * Pin configuration functions
  **********************************************************/
-/// Sleep Input from wireless module
+
+ /**********************************************************
+  *
+  * @brief Sleep Input pin configuration
+  *
+  **********************************************************/
 inline void CONFIG_SLEEP_INPUT()
 {
-    CONFIG_RB9_AS_DIG_INPUT();     //use RB9 as sleep input
+    CONFIG_RB9_AS_DIG_INPUT();
     DISABLE_RB9_PULLUP();
     DELAY_US(1);
 }
 
-// Test Mode Switch
+/**********************************************************
+ *
+ * @brief Test Mode Switch pin configuration
+ *
+ **********************************************************/
 inline void CONFIG_TEST_SWITCH()
 {
     CONFIG_RB8_AS_DIG_INPUT();
@@ -47,14 +54,22 @@ inline void CONFIG_TEST_SWITCH()
     DELAY_US(1);
 }
 
-// Analog Power pin configuration
+/**********************************************************
+ *
+ * @brief Analog circuitry power control pin configuration
+ *
+ **********************************************************/
 inline void CONFIG_ANALOG_POWER()
 {
     CONFIG_RB7_AS_DIG_OD_OUTPUT();
     DELAY_US(1);
 }
 
-//Analog input pin configuration
+/**********************************************************
+ *
+ * @brief ADC analog input pin configurations
+ *
+ **********************************************************/
 inline void CONFIG_ANALOG_INPUTS()
 {
     //configure ADC pins
@@ -71,6 +86,15 @@ inline void CONFIG_ANALOG_INPUTS()
     DELAY_US(1);
 }
 
+/**********************************************************
+ *
+ * @brief Set PIC I/O pins a low power mode
+ * @note  Reset all pins to be analog inputs in
+ *        order to save power. As such, we have to
+ *        re-define all of the digital I/O pins when we
+ *        come out of low power mode
+ *
+ **********************************************************/
 void configHighPower(void)
 {
     CONFIG_SLEEP_INPUT();
@@ -81,25 +105,62 @@ void configHighPower(void)
     _LATB7 = 0;     //enable power to analog circuitry
 }
 
-/****************************POLLING FUNCTIONS****************************/
+
+/**********************************************************
+ * Interrupt Handlers
+ **********************************************************/
+
+/**********************************************************
+ *
+ * @breif Wake PIC from sleep
+ * @note  This interrupt exists only to wake the PIC from
+ *        sleep mode. It is attached to the SLEEP_INPUT
+ *        pin and is configured to fire whenever on the
+ *        rising edge of that pin. As such, it's only duty
+ *        is to clear its own flag.
+ *
+ **********************************************************/
+void _ISRFAST _INT1Interrupt(void)
+{
+    _INT1IF = 0;        //clear interrupt flag before exiting
+}
+
+
+/**********************************************************
+ * Polling Functions
+ **********************************************************/
+ 
+/**********************************************************
+ *
+ * @breif Respond to data poll request
+ * @note  This function reads in the data request and
+ *        responds to it with data.
+ *
+ **********************************************************/
 void parseInput(void)
 {
     DELAY_MS(5);
-    outString("In Parse Input");
-    SNSL_PrintSamples(pollData);
+
+    outString("Stored samples at beginning of poll response:\n");
+    SNSL_PrintSamples(pollData);    //print stored samples array
     uint8 u8_c,
           x, y;
     RTCC ack_time;
     UFDATA fdata;
-    SNSL_GetNodeName(&fdata);
-    u8_c = inChar2();
-    ack_time.u8.hour = inChar2();
+    
+    SNSL_GetNodeName(&fdata);   //read in node name from program memory
+    
+    u8_c = inChar2();   //first byte is always garbage
+    ack_time.u8.hour = inChar2();   //read in the ACK timestamp from poll request
     ack_time.u8.min  = inChar2();
     ack_time.u8.sec  = inChar2();
-    uint8 tmp = SNSL_NewestSample(pollData);
+    
+    uint8 tmp = SNSL_NewestSample(pollData);    //get index of newest stored sample in array
+    /* Initially set the data point to send out to be the newest stored sample (if any)*/
     STORED_SAMPLE *to_send = &pollData[tmp];
-    printf("parseInput; Newest index: %d", tmp);
+    //printf("Newest index: %d", tmp);
 
+    /*There are only two packet types we want to respond to, a data request or a single ACK*/
     if(u8_c != MONITOR_REQUEST_DATA_STATUS)
     {
         if(u8_c != ACK_PACKET)
@@ -109,46 +170,54 @@ void parseInput(void)
         }
     }
 
-    // Request for new data
+    /* If the ACK timestamp is all 0xff, then we have received a request for new data. We need
+    *  to read the ADC again, check its timestamp vs the read we took when we woke up from sleep, and
+    *  either store the one taken at wake, or store it if we have missed a sleep message*/
     if(ack_time.u8.hour == 0xff && ack_time.u8.min == 0xff && ack_time.u8.sec == 0xff)
     {
-        RTCC_Read(&poll_loop.ts);
+        RTCC_Read(&poll_loop.ts);   //read current time into new ADC sample
         sampleProbes((FLOAT *)&poll_loop.samples);   //sample ADC for redox data, store in data buffer
-        to_send = &poll_loop;
+        outChar('\n');
+        to_send = &poll_loop;       //set data point to send out to the ADC read just taken
 
-        // If difference is greater than wake cycle, then push current
-        // poll onto the buffer.
+        /* Check the difference in timestamps between the wake read and the current read. If greater
+        *  than the mesh sleep time, push the wake read into the storage array, otherwise discard it.*/
         if(SNSL_TimeDiff(poll_wake.ts, poll_loop.ts) > MESH_SLEEP_MINS * 60)
         {
             SNSL_InsertSample(pollData, poll_wake);
         }
     }
-    // An ACK for the poll data with the given timestamp
+    /* Otherwise, we've recieved an ACK for a data point we have already sent out. We need to mark that data
+    *  point as having been sent*/
     else
     {
-        SNSL_ACKSample(pollData, ack_time);
+        SNSL_ACKSample(pollData, ack_time); //find the sample in the array and mark it as having been ACK'd
+        outString("Stored samples after ACK\n");
         SNSL_PrintSamples(pollData);
         tmp = SNSL_NewestSample(pollData);
-        to_send = &pollData[tmp];
-        printf("ACKd; Newest index: %d", tmp);
+        to_send = &pollData[tmp];   //set data point to send out to newest stored sample
+        //printf("ACKd; Newest index: %d", tmp);
     }
 
-    //packet structure: 0x1E(1)|Packet Length(1)|Packet Type(1)|Remaining polls(1)|Timestamp(6)|Temp data(10)|Redox data(8)|
-    //                  Reference Voltage(2)|Node Name(12 max)
+    /*Build and send response to data poll based on the data point to be sent out (as determine above)
+    * packet structure: 0x1E(1)|Packet Length(1)|Packet Type(1)|Remaining polls(1)|Timestamp(6)|Temp data(20)|Redox data(16)|
+    *                   Reference Voltage(4)|Node Name(12 max)*/
     SendPacketHeader();
+    /*Length = packet type and remaining polls (2B) + timestamp (6B) + temp (4B*5=20B) + redox (4B*4=16B) + ref (4B) + 
+               node name (<= 12B)*/
     uint8 length = 2 + 6 + sizeof(float) * 5 + sizeof(float) * 4 + sizeof(float) + strlen((char *)fdata.dat.node_name);
     outChar2(length);
-    printf("TX Packet Size: 0x%2x\n", length);
-    outChar2(APP_SMALL_DATA);
+    //printf("TX Packet Size: 0x%2x\n", length);
+    outChar2(APP_SMALL_DATA);   //send packet type
     outChar2(SNSL_TotalSamplesInUse(pollData));  //remaining polls
-    //outString("MDYHMS");
+    //send timestamp
     outChar2(to_send->ts.u8.month);
     outChar2(to_send->ts.u8.date);
     outChar2(to_send->ts.u8.yr);
     outChar2(to_send->ts.u8.hour);
     outChar2(to_send->ts.u8.min);
     outChar2(to_send->ts.u8.sec);
-
+    //send redox, temperature, and reference voltage values
     for(x = 0; x < NUM_ADC_PROBES; ++x)
     {
         for(y = 0; y < sizeof(float); ++y)
@@ -156,27 +225,16 @@ void parseInput(void)
             outChar2(to_send->samples[x].s[y]);
         }
     }
-
-    //outString2("10tempData");
-    //outString2("8redData");
-    //outString2("rV");
+    //send node name from program memory
     outString2((char *)fdata.dat.node_name);
-    //outString2("12_node_test");
-    u8_polled = 1;
+    u8_polled = 1;  //mark that we have been polled
     outString("Poll Response Complete\n\n");
-}
-
-/****************************INTERRUPT HANDLERS****************************/
-void _ISRFAST _INT1Interrupt(void)
-{
-    _INT1IF = 0;        //clear interrupt flag before exiting
 }
 
 
 /****************************MAIN******************************************/
 int main(void)
 {
-    //SNSL_ConfigLowPower();
     configClock();
     configDefaultUART(DEFAULT_BAUDRATE);
     configUART2(DEFAULT_BAUDRATE);
@@ -191,10 +249,13 @@ int main(void)
     // Initialize the Real-Time Clock Calendar
     RTCC_SetDefaultVals(&u_RTCC);
     RTCC_Set(&u_RTCC);
-    //
+
     UFDATA fdata;
     SNSL_GetNodeName(&fdata);
 
+    /* After programming, all of the unused program memory is set to 0xff. If
+    *  we haven't set a node name yet, and we try to send this out, everything breaks.
+    *  So, we set a default node name to prevent everything from breaking.*/
     if(fdata.dat.node_name[0] == 0xFF)
     {
         SNSL_SetNodeName(DEFAULT_NODE_NAME);
@@ -204,7 +265,7 @@ int main(void)
 
     while(1)
     {
-        if(!TEST_SWITCH)
+        if(!TEST_SWITCH)    //in setup mode
         {
             // Disable the sleep interrupt
             _INT1IE = 0;
@@ -222,18 +283,7 @@ int main(void)
             {
                 outString("\n\nSetting Clock:\n");
                 RTCC_GetDateFromUserNoWday(&u_RTCC);
-                //outString("\n\nInitializing clock....");
                 RTCC_Set(&u_RTCC);
-                /*outString("\nTesting clock (press any key to end):\n");
-                while (!isCharReady())
-                {
-                    if (RCFGCALbits.RTCSYNC)
-                    {
-                        RTCC_Read(&u_RTCC);
-                        RTCC_Print(&u_RTCC);
-                        DELAY_MS(700);
-                    }
-                }*/
                 outString("\n\nClock set. Returning to menu....\n");
                 WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
             }
@@ -248,7 +298,6 @@ int main(void)
                 inStringEcho((char *)name_buff, 12);
                 SNSL_SetNodeName(name_buff);
                 outString("\nNew node name saved. Returning to menu....\n");
-                //outString(name_buff);
                 WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
             }
             else if(u8_menuIn == '3')
@@ -279,34 +328,36 @@ int main(void)
             {
                 SLEEP();         //macro for asm("pwrsav #0")
                 NOP();          //insert nop after wake from sleep to solve stabiity issues
-                //do code from interrupt here:
+                /* Now that we're awake, we need to respond to any data requests we receive*/
                 configHighPower();
                 U2MODEbits.UARTEN = 1;                    // enable UART RX/TX
                 U2STAbits.UTXEN   = 1;                    //enable the transmitter
 
                 if(SLEEP_INPUT)
                 {
-                    u8_polled = 0;
+                    u8_polled = 0;  //mark that we're awake and we haven't been polled yet
                     // MPLAB cries if doze constant isn't put in
                     // a variable. Casting doesn't seem
                     // to work either.
                     uint8 doze = 8;
                     _DOZE = doze; //chose divide by 32
                     outString("Awake....Reading ADC Data:\n");
+                    
+                    /*We take an ADC sample at wake. This may or may not be used later*/
                     sampleProbes((FLOAT *)&poll_wake.samples);   //sample ADC for redox data, store in data buffer
                     outChar('\n');
                     RTCC_Read(&poll_wake.ts);
-                    outString("On wake\n");
+                    outString("Stored samples at wake:\n");
                     SNSL_PrintSamples(pollData);
 
                     while(SLEEP_INPUT)
                     {
                         _DOZEN = 1; //enable doze mode, cut back on clock while waiting to be polled
 
-                        //outString("Waiting for char\n");
+                        //Wait until we receive something from the SNAP node
                         if(isCharReady2())
                         {
-                            _DOZEN = 0;
+                            _DOZEN = 0; //return to normal mode
                             outString("Poll Request Received\n");
                             parseInput();  //satisfy the polling
                         }
@@ -315,10 +366,12 @@ int main(void)
 
                 if(u8_polled == 0)
                 {
-                    //node woke up but wasn't successfully polled | store data and increment current_poll
+                    /*We've woken up, but we were never polled. We have to save the data sample we took
+                    * at wake, and increment the total number of times we've been missed.*/
                     SNSL_InsertSample(pollData, poll_wake);
                     outString("ERROR: Poll Did Not Complete\n");
                     printf("Total Missed Polls: %d\n", SNSL_TotalSamplesInUse(pollData));
+                    WAIT_UNTIL_TRANSMIT_COMPLETE_UART1();
                 }
 
                 U2MODEbits.UARTEN = 0;                    // disable UART RX/TX
