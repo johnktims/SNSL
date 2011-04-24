@@ -8,7 +8,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-/****************************GLOBAL VARIABLES****************************/
+
+/***********************************************************
+ * Global Variables
+ ***********************************************************/
 uint8 u8_numHops, u8_failureLimit, u8_stopPolling,
       u8_pollsCompleted, u8_pollsIgnored, u8_pollsFailed,
       u8_newFileName;
@@ -17,27 +20,42 @@ uint32 u32_hopTimeout;
 
 union32 timer_max_val;
 
-unionRTCC u_RTCC, u_RTCCatStartup;
+RTCC u_RTCC, u_RTCCatStartup;
 
 char filename[13],
      psz_out[128];
 
-/****************************PIN CONFIGURATION****************************/
-#define SLEEP_INPUT _RB14
-#define TEST_SWITCH _RA2
-#define VDIP_POWER  _RB7
-#define SLEEP_TIME  _RB8
 
-/// Sleep Input pin configuration
+/***********************************************************
+ * Assign Pins
+ ***********************************************************/
+#define SLEEP_INPUT (_RB14)
+#define TEST_SWITCH (_RA2)
+#define VDIP_POWER  (_RB7)
+#define SLEEP_TIME  (_RB8)
+
+
+/***********************************************************
+ * Configure Pins
+ ***********************************************************/
+
+ /**********************************************************
+  *
+  * @brief Sleep Input pin configuration
+  *
+  **********************************************************/
 inline void CONFIG_SLEEP_INPUT(void)
 {
-    //use RB14 for mode input
     CONFIG_RB14_AS_DIG_INPUT();
     DISABLE_RB14_PULLUP();
     DELAY_US(1);
 }
 
-//Test Mode Switch pin configuration
+/**********************************************************
+ *
+ * @brief Test Mode Switch pin configuration
+ *
+ **********************************************************/
 inline void CONFIG_TEST_SWITCH(void)
 {
     CONFIG_RA2_AS_DIG_INPUT();
@@ -45,7 +63,11 @@ inline void CONFIG_TEST_SWITCH(void)
     DELAY_US(1);
 }
 
-//Sleep time pin configuration
+/**********************************************************
+ *
+ * @brief Sleep time pin configuration
+ *
+ **********************************************************/
 inline void CONFIG_SLEEP_TIME(void)
 {
     CONFIG_RB8_AS_DIG_INPUT();
@@ -53,13 +75,20 @@ inline void CONFIG_SLEEP_TIME(void)
     DELAY_US(1);
 }
 
+/**********************************************************
+ *
+ * @brief Set PIC I/O pins a low power mode
+ * @note  Reset all pins to be analog inputs in
+ *        order to save power. As such, we have to
+ *        re-define all of the digital I/O pins when we
+ *        come out of low power mode
+ *
+ **********************************************************/
 void configHighPower(void)
 {
-    /*  SNSL_configLowPower resets all pins to be analog inputs in
-     *  order to save power. As such, we have to re-define all of
-     *  the digital I/O pins when we come out of low power mode
-     */
-    _LATB7 = 0;     //enable power to VDIP
+    // Turn on the VDIP
+    _LATB7 = 0;
+
     CONFIG_SLEEP_INPUT();
     CONFIG_TEST_SWITCH();
     CONFIG_VDIP_POWER();
@@ -67,7 +96,15 @@ void configHighPower(void)
     CONFIG_INT1_TO_RP(14);
 }
 
-/****************************TIMER CONFIGURATION****************************/
+/**********************************************************
+ * Configure Timers
+ **********************************************************/
+
+/**********************************************************
+ *
+ * @brief Get us out of the polling loop
+ *
+ **********************************************************/
 void configTimer23(void)
 {
     T2CON = T2_OFF | T2_IDLE_CON | T2_GATE_OFF | T2_32BIT_MODE_ON
@@ -88,7 +125,19 @@ void startTimer23(void)
     T2CONbits.TON = 1;  // Start the timer
 }
 
-/****************************POLLING FUNCTIONS****************************/
+
+/**********************************************************
+ * Polling Functions
+ **********************************************************/
+
+/**********************************************************
+ *
+ * @brief  Wait for a character from the wireless module
+ * @return The received character
+ * @note   If we don't receive a character, we will wait
+ *         until the
+ *
+ **********************************************************/
 uint8 blocking_inChar(void)
 {
     uint8 u8_char = '~';
@@ -103,10 +152,16 @@ uint8 blocking_inChar(void)
         u8_char = inChar2();
     }
 
-    //printf("char input: %c | %x\n", u8_char, u8_char);
     return u8_char;
 }
 
+
+/**********************************************************
+ *
+ * @brief  Determine whether or not the mesh is awake
+ * @return 1 if the mesh is up, and 0 otherwise
+ *
+ **********************************************************/
 uint8 isMeshUp(void)
 {
     uint8 u8_c = inChar2();
@@ -120,12 +175,40 @@ uint8 isMeshUp(void)
             inChar2();
             inChar2();
             inChar2();
-            return 0x01;
+            return 1;
         }
     }
 
-    return 0x0;
+    return 0;
 }
+
+
+/**********************************************************
+ * Interrupt Handlers
+ **********************************************************/
+
+/**********************************************************
+ *
+ * @brief This interrupt exists only to wake the PIC from
+ *        sleep mode. It is attached to the SLEEP_INPUT
+ *        pin and is configured to fire whenever on the
+ *        rising edge of that pin. As such, it's only duty
+ *        is to clear its own flag.
+ *
+ **********************************************************/
+void _ISRFAST _INT1Interrupt(void)
+{
+    _INT1IF = 0;        //clear interrupt flag
+}
+
+void _ISRFAST _T3Interrupt(void)
+{
+    u8_stopPolling = 1;
+    T2CONbits.TON  = 0;             //stop the timer
+    outString("Timer Expired\n");
+    _T3IF = 0;                      //clear interrupt flag
+}
+
 
 void sendStayAwake(void)
 {
@@ -155,15 +238,17 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
     outChar2(hr);
     outChar2(min);
     outChar2(sec);
-    //puts("---> Sent");
+
     WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
     uint8 size = 2 + 6 + sizeof(float) * 5 + sizeof(float) * 4 + sizeof(float) + 12; // == 60
     uint8 poll_data[size];
     uint8 i = 0;
 
+    // Clear out the  poll buffer
+    // TODO: optimize with memset
     for(i = 0; i < size; ++i)
     {
-        poll_data[i] = 0x00;
+        poll_data[i] = 0;
     }
 
     volatile uint8 tmp,
@@ -171,10 +256,12 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
              remaining_polls = 0,
              u8_char;
 
-    //puts("---> Parsing Header");
-    for(tmp = 0; tmp < 7; tmp++)    //full packet header == 7 bytes (header (1) | node address (3 bytes) | packet type (1)
+    // Parse header
+    // full packet header == 7 bytes
+    // (header (1) | node address (3 bytes) | packet type (1)
+    // | size (1) | remaining polls (1)
+    for(tmp = 0; tmp < 7; tmp++)
     {
-        //                               | size (1) | remaining polls (1)
         u8_char = blocking_inChar();
 
         if(u8_char == 0 && tmp == 0)
@@ -182,7 +269,6 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
             u8_char = blocking_inChar();
         }
 
-        //printf("char input: %c | %x\n", u8_char, u8_char);
         if(u8_char == '~')
         {
             u8_stopPolling = 1;
@@ -192,7 +278,8 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
         {
             if(tmp == 4)
             {
-                packet_length = u8_char - 2;    //subtract 2 to remove packet header and packet type from length
+                // Subtract 2 to remove packet header and packet type from length
+                packet_length = u8_char - 2;
             }
             else if(tmp == 6)
             {
@@ -201,11 +288,11 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
         }
     }
 
-    //printf("Remaining polls: `%u`\n", remaining_polls);
-    //puts("---> Parse Packet");
-    for(tmp = 0; tmp < packet_length; ++tmp)    //packet message == packet_length (max 58 == size-2)
+    // Parse remaining bytes in packet
+    // packet message == packet_length
+    // (max 58 == size-2)
+    for(tmp = 0; tmp < packet_length; ++tmp)
     {
-        //this loop reads in remainder of packet message
         u8_char = blocking_inChar();
 
         if(u8_char == '~')
@@ -221,8 +308,8 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
 
     if(!u8_stopPolling)
     {
-        //puts("---> Format and Print");
         poll_data[packet_length] = '\0';
+
         // Print out the packet in ascii hex
         outString("RAW PACKET:");
         tmp = 0;
@@ -245,16 +332,16 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
 
         psz_node_name[i - nameStart] = 0x0;
         printf("NODE NAME: `%s`\n", psz_node_name);
+
         FLOAT probes[10];
         int x, offset = 6;
 
         for(x = 0; x < 10; offset += sizeof(float), ++x)
         {
             memcpy(probes[x].s, poll_data + offset, sizeof(float));
-            //printf("\nP[%d].s = `%s`; .f=`%f`; data[%d]=%0X\n", x, probes[x].s, probes[x].f, offset, poll_data[offset]);
         }
 
-        //date(MM/DD/YYY),time(HH:MM:SS),1.250,vref,sp1,sp2,sp3,sp4,temp1,temp2,temp3,temp4,temp5,nodeName
+        // Date(MM/DD/YYY),time(HH:MM:SS),1.250,vref,sp1,sp2,sp3,sp4,temp1,temp2,temp3,temp4,temp5,nodeName
         char psz_fmt[] =
             "%02x/%02x/%02x,"                // timestamp [MM/DD/YY]
             "%02x:%02x:%02x,"                // timestamp [HH:MM:SS]
@@ -271,26 +358,24 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
                 probes[5].f, probes[6].f, probes[7].f, probes[8].f, probes[9].f, // temperature samples
                 psz_node_name); // node name
         psz_out[127] = 0x0;
+
         printf("FORMATTED PACKET:%s", psz_out);
-        //outString(psz_out);
-        // puts("---> Writing File");
+
         VDIP_WriteFile((uint8 *)filename, (uint8 *)psz_out);
 
-        //puts("---> Done writing polls");
+        // If this is the final response from the sensor, send an ACK
         if(remaining_polls == 0x01 && hr != 0xff)
         {
-            // send ACK packet
             SendPacketHeader();
-            outChar2(0x05);        //packet length
+            outChar2(0x05);    // Packet length
             outChar2(c_ad1);
             outChar2(c_ad2);
             outChar2(c_ad3);
-            outChar2(0x03);    //Appdata packet (forward data directly to PIC)
+            outChar2(0x03);    // Appdata packet (forward data directly to PIC)
             outChar2(ACK_PACKET);
             outChar2(p[3]);
             outChar2(p[4]);
             outChar2(p[5]);
-            //puts("---> Sent");
             WAIT_UNTIL_TRANSMIT_COMPLETE_UART2();
         }
         else if(remaining_polls != 0x00)
@@ -298,19 +383,17 @@ uint8 doPoll(char c_ad1, char c_ad2, char c_ad3, uint8 hr, uint8 min, uint8 sec)
             doPoll(c_ad1, c_ad2, c_ad3, p[3], p[4], p[5]);
         }
 
-        //puts("---> Success");
         return 0x01;
     }
     else if(SLEEP_TIME)
     {
-        //puts("---> Fail and record");
-        //record node response failure
-        //do not record failure if in mesh setup mode (SLEEP_PIN == HIGH)
+        // Record node response failure
+        // Don't record failure if in mesh setup mode (SLEEP_PIN == HIGH)
         return 0x00;
     }
     else
     {
-        //puts("---> Fail and don't record");
+        // Polling failed, but don't log it.
         return 0x02;
     }
 }
@@ -327,24 +410,6 @@ void sendEndPoll(void)
     outString2(sz_data);
 }
 
-/****************************INTERRUPT HANDLERS****************************/
-/*
-*   This interrupt exists only to wake the PIC from sleep mode. It is attached
-*   to the SLEEP_INPUT pin and is configured to fire whenever on the rising
-*   edge of that pin. As such, it's only duty is to clear it's own flag.
-*/
-void _ISRFAST _INT1Interrupt(void)
-{
-    _INT1IF = 0;        //clear interrupt flag
-}
-
-void _ISRFAST _T3Interrupt(void)
-{
-    u8_stopPolling = 1;
-    T2CONbits.TON  = 0;             //stop the timer
-    outString("Timer Expired\n");
-    _T3IF = 0;                      //clear interrupt flag
-}
 
 /****************************MAIN******************************************/
 int main(void)

@@ -4,24 +4,34 @@
 #include "rtcc.h"
 #include "adc_sample.h"
 
-#include <stdio.h>
-#include <string.h>
+#include <stdio.h>  // printf
+#include <string.h> // malloc
 
-#define SLEEP_INPUT  _RB9
-#define TEST_SWITCH  _RB8
-#define ANALOG_POWER _RB7
 
-/****************************GLOBAL VARIABLES****************************/
+/***********************************************************
+ * Macro Definitions
+ **********************************************************/
+#define SLEEP_INPUT   _RB9
+#define TEST_SWITCH   _RB8
+#define ANALOG_POWER  _RB7
+
+/***********************************************************
+ * Global Variables
+ **********************************************************/
+// 
 uint8 u8_polled = 0;
 
-unionRTCC u_RTCC;
+RTCC u_RTCC;
 
 STORED_SAMPLE pollData[MAX_STORED_SAMPLES];
 STORED_SAMPLE poll_wake,
               poll_loop;
 
-/****************************PIN CONFIGURATION****************************/
-/// Sleep Input pin configuration
+
+/***********************************************************
+ * Pin Configurations
+ **********************************************************/
+/// Sleep Input from wireless module
 inline void CONFIG_SLEEP_INPUT()
 {
     CONFIG_RB9_AS_DIG_INPUT();     //use RB9 as sleep input
@@ -29,7 +39,7 @@ inline void CONFIG_SLEEP_INPUT()
     DELAY_US(1);
 }
 
-// Test Mode Switch pin configuration
+// Test Mode Switch
 inline void CONFIG_TEST_SWITCH()
 {
     CONFIG_RB8_AS_DIG_INPUT();
@@ -79,7 +89,7 @@ void parseInput(void)
     SNSL_PrintSamples(pollData);
     uint8 u8_c,
           x, y;
-    unionRTCC ack_time;
+    RTCC ack_time;
     UFDATA fdata;
     SNSL_GetNodeName(&fdata);
     u8_c = inChar2();

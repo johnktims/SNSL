@@ -7,18 +7,16 @@
 /***********************************************************
  * Pin Mappings
  **********************************************************/
-
 // Reset pin on the VDIP
 #define RESET _LATB13
 #define CONFIG_RESET() CONFIG_RB13_AS_DIG_OUTPUT()
 
 #define CONFIG_VDIP_POWER() CONFIG_RB7_AS_DIG_OD_OUTPUT(); \
-        DELAY_US(1)
+                            DELAY_US(1)
 
 /***********************************************************
- * Common Characters
+ * Define VDIP Constants
  **********************************************************/
-
 // Carriage Return
 #define CR 0xd
 
@@ -77,8 +75,8 @@ void     VDIP_Sync_E(void);
 uint8    VDIP_Sync(void);
 uint8    VDIP_SCS(void);
 
-void     VDIP_WriteFile(const uint8 *,
-                        const uint8 *);
+void     VDIP_WriteFile (const uint8 *,
+                         const uint8 *);
 void     VDIP_WriteFileN(const uint8 *,
                          const uint8 *,
                          uint32);

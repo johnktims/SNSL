@@ -14,12 +14,12 @@
  * Function Definitions
  **********************************************************/
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Retrieve NODES.TXT and parse the nodes' names
  * @return uint8** The nodes' names in hex
- */
-//**********************************************************
+ *
+ **********************************************************/
 uint8 **SNSL_ParseNodeNames(void)
 {
     if(!VDIP_FileExists(FILE_NODES))
@@ -30,6 +30,7 @@ uint8 **SNSL_ParseNodeNames(void)
     uint8 *psz_data  = VDIP_ReadFile(FILE_NODES);
     uint32 u32_size  = VDIP_FileSize(FILE_NODES),
            u32_index;
+
     // Count the newlines to count the number
     // of nodes we need to allocate memory for
     uint32 u32_nodes = 0,
@@ -98,12 +99,12 @@ uint8 **SNSL_ParseNodeNames(void)
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Temporary RTSP functions
  * @todo  Clean this crap up
- */
-//**********************************************************
+ *
+ **********************************************************/
 void doInsert(UFDATA *p_ufdata, uint8 *sz_1)
 {
     uint16 u16_j = 0;
@@ -133,24 +134,24 @@ void doRead(UFDATA *p_ufdata)
     doReadPageFlash(u_memaddr, (uint8 *) p_ufdata, FLASH_DATA_SIZE);
 }
 
-//**********************************************************
-/**
- * @brief Retrieve a node's name from its program memory
- * @note  This will only be used on the sensor nodes
+/**********************************************************
+ *
+ * @brief  Retrieve a node's name from its program memory
+ * @note   This will only be used on the sensor nodes
  * @return uint8* The node's name
- */
-//**********************************************************
+ *
+ **********************************************************/
 void SNSL_GetNodeName(UFDATA *fdata)
 {
     doRead(fdata);
 }
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Retrieve a node's name from its program memory
  * @note  This will only be used on the sensor nodes
- */
-//**********************************************************
+ *
+ **********************************************************/
 void SNSL_SetNodeName(uint8 *node_name)
 {
     UFDATA fdata;
@@ -159,11 +160,11 @@ void SNSL_SetNodeName(uint8 *node_name)
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Print a node's name
- */
-//**********************************************************
+ *
+ **********************************************************/
 void SNSL_PrintNodeName(void)
 {
     UFDATA fdata;
@@ -172,18 +173,18 @@ void SNSL_PrintNodeName(void)
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Read the first three bytes out of the config file
  *        and store them in the variables that were passed
  *        in by reference.
- * @param[out] The number of hops stored
- * @param[out] The number of timeouts allowed per hop
- * @param[out] The maximum number of times the collector
- *             will attempt to poll a node before it
- *             gives up completely.
- */
-//**********************************************************
+ * @param [out] The number of hops stored
+ * @param [out] The number of timeouts allowed per hop
+ * @param [out] The maximum number of times the collector
+ *              will attempt to poll a node before it
+ *              gives up completely.
+ *
+ **********************************************************/
 void SNSL_ParseConfigHeader(uint8 *hops, uint32 *timeout_per_hop,
                             uint8 *max_attempts)
 {
@@ -203,18 +204,18 @@ void SNSL_ParseConfigHeader(uint8 *hops, uint32 *timeout_per_hop,
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Parses the header of the config file and then
  *        parses out the nodes and the number of associated
  *        attempts.
- * @param[out] The number of hops stored
- * @param[out] The number of timeouts allowed per hop
- * @param[out] The maximum number of times the collector
+ * @param [out] The number of hops stored
+ * @param [out] The number of timeouts allowed per hop
+ * @param [out] The maximum number of times the collector
  *             will attempt to poll a node before it
  *             gives up completely.
- */
-//**********************************************************
+ *
+ **********************************************************/
 POLL *SNSL_ParseConfig(uint8 *hops, uint32 *timeout_per_hop,
                        uint8 *max_attempts)
 {
@@ -253,6 +254,7 @@ POLL *SNSL_ParseConfig(uint8 *hops, uint32 *timeout_per_hop,
             case 0:
                 *hops = u8_curr;
                 break;
+
             case 1:
             case 2:
             case 3:
@@ -260,9 +262,11 @@ POLL *SNSL_ParseConfig(uint8 *hops, uint32 *timeout_per_hop,
                 *timeout_per_hop |= sz_data[u32_index];
                 *timeout_per_hop <<= (4 - u32_index) * 8;
                 break;
+
             case 5:
                 *max_attempts = u8_curr;
                 break;
+
             default:
                 polls[u8_node].name[0]  = sz_data[u32_index];
                 polls[u8_node].name[1]  = sz_data[++u32_index];
@@ -281,18 +285,18 @@ POLL *SNSL_ParseConfig(uint8 *hops, uint32 *timeout_per_hop,
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Write the three header bytes and the nodes to
  *        the VDIP.
- * @param[in] The number of hops stored
- * @param[in] The number of timeouts allowed per hop
- * @param[in] The maximum number of times the collector
+ * @param [in] The number of hops stored
+ * @param [in] The number of timeouts allowed per hop
+ * @param [in] The maximum number of times the collector
  *            will attempt to poll a node before it
  *            gives up completely.
- * @param[in] The array of POLLs
- */
-//**********************************************************
+ * @param [in] The array of POLLs
+ *
+ **********************************************************/
 void SNSL_WriteConfig(uint8 hops, uint32 timeout_per_hop,
                       uint8 max_attempts, POLL *polls)
 {
@@ -336,85 +340,57 @@ void SNSL_WriteConfig(uint8 hops, uint32 timeout_per_hop,
     }
 
     ++u32_index;
-    /*u8_i = 0;
-    while (u8_i < u32_index){
-        outUint8(sz_out[u8_i]);
-        u8_i++;
-    }*/
     VDIP_WriteFileN((uint8 *)FILE_CONFIG, sz_out, u32_index);
     free(sz_out);
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Find an entry in the array of POLLs
- * @param[in] The 3-byte name of the node
- * @param[in] The array of POLLs to be searched
+ * @param [in] The 3-byte name of the node
+ * @param [in] The array of POLLs to be searched
  * @return The index of the match or UNKNOWN_NODE
- */
-//**********************************************************
+ *
+ **********************************************************/
 uint8 SNSL_SearchConfig(uint8 *name, POLL *polls)
 {
     uint8 u8_i;
 
     for(u8_i = 0; polls[u8_i].attempts != LAST_POLL_FLAG; ++u8_i)
     {
-        /*
-        outString("Checking: `");
-        outUint8(polls[u8_i].name[0]);
-        outUint8(polls[u8_i].name[1]);
-        outUint8(polls[u8_i].name[2]);
-        outString("` vs `");
-        outUint8(polls[u8_i].name[0]);
-        outUint8(polls[u8_i].name[1]);
-        outUint8(polls[u8_i].name[2]);
-        outString("`\n");
-        */
-        //if(strcmp(polls[u8_i].name, name) == 0)
         if(polls[u8_i].name[0] == name[0] &&
            polls[u8_i].name[1] == name[1] &&
            polls[u8_i].name[2] == name[2])
         {
-            /*
-            outString("  Found: attempts=`");
-            outUint8(polls[u8_i].attempts);
-            outString("`\n");
-            */
-            //return polls[u8_i].attempts;
             return u8_i;
         }
     }
 
-    /*
-    outString("  NOT Found: attempts=`");
-    outUint8(0);
-    outString("`\n");
-    */
     return UNKNOWN_NODE;
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Merge the ascii names with any previous attempts
  *        that may already exist in the binary config file.
  * @return An array of POLLs.
- */
-//**********************************************************
+ *
+ **********************************************************/
 POLL *SNSL_MergeConfig(void)
 {
     // Parse the user-entered values which are in Ascii form
-    //outString("SNSL_MergeConfig: Started\n");
-    //outString("Parsing Ascii File\n");
     uint8 **nodes = SNSL_ParseNodeNames();
-    //outString("Parsing nodes from binary config file\n");
+
+    // Parsing nodes from binary config file
     // Get nodes in config file to update the new array
     // with the current number of attempts;
     uint8 hops, max_attempts;
     uint32 timeout_per_hop;
     POLL *old_config = SNSL_ParseConfig(&hops,
-                                        &timeout_per_hop, &max_attempts);
+                                        &timeout_per_hop,
+                                        &max_attempts);
     // Count nodes
     uint8 u8_nodes = 0;
 
@@ -442,35 +418,22 @@ POLL *SNSL_MergeConfig(void)
         {
             polls[u8_i].attempts = old_config[u8_search].attempts;
         }
-
-        /*
-        outString("Config value for `");
-        outUint8(polls[u8_i].name[0]);
-        outUint8(polls[u8_i].name[1]);
-        outUint8(polls[u8_i].name[2]);
-        outString("`= `");
-        outUint8(polls[u8_i].attempts);
-        outString("`\n");
-        */
     }
 
     polls[u8_nodes].attempts = LAST_POLL_FLAG;
-    //outString("Writing to binary config\n");
-    //SNSL_WriteConfig(hops, timeout_per_hop, max_attempts, polls);
-    //outString("SNSL_MergeConfig: Finished\n");
     VDIP_CleanupDirList(nodes);
     free(old_config);
     return polls;
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Print out all the nodes' names and numbers of
  *        failed attempts as well as any other
  *        configuration settings.
- */
-//**********************************************************
+ *
+ **********************************************************/
 void SNSL_PrintConfig(void)
 {
     uint8 hops, max;
@@ -492,12 +455,14 @@ void SNSL_PrintConfig(void)
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Configure PIC for low power mode
- * @note  This is a rewrite of the function from pic24_util.c. This will only work for the PIC24FJ64GA102.
- */
-//**********************************************************
+ * @note  This is a rewrite of the function from
+ *        pic24_util.c. This will only work for the
+ *        PIC24FJ64GA102.
+ *
+ **********************************************************/
 void SNSL_ConfigLowPower(void)
 {
     //Config all digital I/O pins as inputs
@@ -516,71 +481,90 @@ void SNSL_ConfigLowPower(void)
 }
 
 
-//**********************************************************
-/**
- * @brief Write event log entry for a polling event (either
- *        start or stop)
- * @param[in] The struct of uint8 timestamp values
- * @param[in] The event type flag (0 == poll stopped, 1 == poll started)
- */
-//**********************************************************
-void SNSL_LogPollEvent(uint8 type, unionRTCC *u_RTCC)
+/**********************************************************
+ *
+ * @brief      Write event log entry for a polling event
+ *             (either start or stop)
+ * @param [in] The struct of uint8 timestamp values
+ * @param [in] The event type flag
+ *                  0 (poll stopped)
+ *                  1 (poll started)
+ *
+ **********************************************************/
+void SNSL_LogPollEvent(uint8 type, RTCC *u_RTCC)
 {
-    //[d/m/y h:m:s] Polling Started
-    //[d/m/y h:m:s] Polling Stopped
-    char log_format0[] = "[%02x/%02x/%02x %02x:%02x:%02x] Polling Started\n";
-    char log_format1[] = "[%02x/%02x/%02x %02x:%02x:%02x] Polling Stopped\n";
-    char log_out[50];
+    char log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Polling %s\n";
+    char log_out[37];
 
+    // Polling has started.
     if(type == 0x00)
     {
-        sprintf(log_out, log_format0,
-                u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
-                u_RTCC->u8.min, u_RTCC->u8.sec);
+        sprintf(log_out, log_format,
+                u_RTCC->u8.month,
+                u_RTCC->u8.date,
+                u_RTCC->u8.yr,
+                u_RTCC->u8.hour,
+                u_RTCC->u8.min,
+                u_RTCC->u8.sec,
+                "Started");
     }
+    
+    // Polling has stopped.
     else if(type == 0x01)
     {
-        sprintf(log_out, log_format1,
-                u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
-                u_RTCC->u8.min, u_RTCC->u8.sec);
+        sprintf(log_out, log_format,
+                u_RTCC->u8.month,
+                u_RTCC->u8.date,
+                u_RTCC->u8.yr,
+                u_RTCC->u8.hour,
+                u_RTCC->u8.min,
+                u_RTCC->u8.sec,
+                "Stopped");
     }
 
-    log_out[49] = 0x0;
     outString("\n----->");
     outString(log_out);
     VDIP_WriteFile(FILE_LOG, (uint8 *)log_out);
 }
 
 
-//**********************************************************
-/**
- * @brief Write event log entry for a node ignored due to
- *        too many response failures
- * @param[in] The 3-byte name of the node
- * @param[in] The struct of uint8 timestamp values
- */
-//**********************************************************
-void SNSL_LogNodeSkipped(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
+/**********************************************************
+ *
+ * @brief      Write event log entry for a node ignored
+ *             due to too many response failures
+ * @param [in] The 3-byte name of the node
+ * @param [in] The struct of uint8 timestamp values
+ *
+ **********************************************************/
+void SNSL_LogNodeSkipped(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, RTCC *u_RTCC)
 {
-    char log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Ignored (Too Many Failures)\n";
-    char log_out[60];
+    char log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X "
+                        "Ignored (Too Many Failures)\n";
+    char log_out[61];
     sprintf(log_out, log_format,
-            u_RTCC->u8.month, u_RTCC->u8.date, u_RTCC->u8.yr, u_RTCC->u8.hour,
-            u_RTCC->u8.min, u_RTCC->u8.sec, c_ad1, c_ad2, c_ad3);
+            u_RTCC->u8.month,
+            u_RTCC->u8.date,
+            u_RTCC->u8.yr,
+            u_RTCC->u8.hour,
+            u_RTCC->u8.min,
+            u_RTCC->u8.sec,
+            c_ad1,
+            c_ad2,
+            c_ad3);
     outString(log_out);
     VDIP_WriteFile(FILE_LOG, (uint8 *)log_out);
 }
 
 
-//**********************************************************
-/**
- * @brief Write event log entry for a node that failed to
- *        respond
- * @param[in] The 3-byte name of the node
- * @param[in] The struct of uint8 timestamp values
- */
-//**********************************************************
-void SNSL_LogResponseFailure(uint8 attempts , uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, unionRTCC *u_RTCC)
+/**********************************************************
+ *
+ * @brief      Write event log entry for a node that
+ *             failed to respond
+ * @param [in] The 3-byte name of the node
+ * @param [in] The struct of uint8 timestamp values
+ *
+ **********************************************************/
+void SNSL_LogResponseFailure(uint8 attempts , uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, RTCC *u_RTCC)
 {
     char log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Node %02X%02X%02X Failed to Respond (Failure #%u)\n";
     char log_out[80];
@@ -592,13 +576,13 @@ void SNSL_LogResponseFailure(uint8 attempts , uint8 c_ad1, uint8 c_ad2, uint8 c_
 }
 
 
-//**********************************************************
-/**
- * @brief Write polling summary event log
- * @param[in] The struct of uint8 timestamp values
- */
-//**********************************************************
-void SNSL_LogPollingStats(unionRTCC *u_RTCC, uint8 polls, uint8 ignored, uint8 failed)
+/**********************************************************
+ *
+ * @brief      Write polling summary event log
+ * @param [in] The struct of uint8 timestamp values
+ *
+ **********************************************************/
+void SNSL_LogPollingStats(RTCC *u_RTCC, uint8 polls, uint8 ignored, uint8 failed)
 {
     char log_format[] = "[%02x/%02x/%02x %02x:%02x:%02x] Polling Statistics: %u Polled Successfully | %u Failed to Respond | %u Ignored.\n";
     char log_out[120];
@@ -610,14 +594,14 @@ void SNSL_LogPollingStats(unionRTCC *u_RTCC, uint8 polls, uint8 ignored, uint8 f
 }
 
 
-//**********************************************************
-/**
- * @brief Function to calculate exponential equation
- * @return evaluation of base^power
- * @param[in] Base number
- * @param[in] Power to raise base to
- */
-//**********************************************************
+/**********************************************************
+ *
+ * @brief      Function to calculate exponential equation
+ * @return     Evaluation of base^power
+ * @param [in] Base number
+ * @param [in] Power to raise base to
+ *
+ **********************************************************/
 uint32 SNSL_Pow(uint8 base, uint8 power)
 {
     uint32 u32_retVal = base;
@@ -638,13 +622,13 @@ uint32 SNSL_Pow(uint8 base, uint8 power)
 }
 
 
-//**********************************************************
-/**
- * @brief Function convert string of character to integer value
- * @return integer conversion of string
- * @param[in] String of characters to convert
- */
-//**********************************************************
+/**********************************************************
+ *
+ * @brief      Function convert string of character to integer value
+ * @return     Integer conversion of string
+ * @param [in] String of characters to convert
+ *
+ **********************************************************/
 uint32 SNSL_Atoi(uint8 *str)
 {
     uint32 u32_return;
@@ -669,11 +653,11 @@ uint32 SNSL_Atoi(uint8 *str)
 }
 
 
-//**********************************************************
-/**
+/**********************************************************
+ *
  * @brief Create a config file with sane default values
- */
-//**********************************************************
+ *
+ **********************************************************/
 void SNSL_CreateDefaultConfig(void)
 {
     POLL LAST_POLL;
@@ -682,11 +666,16 @@ void SNSL_CreateDefaultConfig(void)
     VDIP_Sync();
     POLL *polls = SNSL_MergeConfig();
     SNSL_WriteConfig(4, (uint32)300, 16, polls);
-    puts("SNSL_Creating config: merge");
     SNSL_PrintPolls(polls);
     free(polls);
 }
 
+
+/**********************************************************
+ *
+ * @brief Print an array of POLLs
+ *
+ **********************************************************/
 void SNSL_PrintPolls(POLL *polls)
 {
     int i = 0;
@@ -699,6 +688,14 @@ void SNSL_PrintPolls(POLL *polls)
     }
 }
 
+
+/**********************************************************
+ *
+ * @brief Set all of the date/time variables to zero, and
+ *        declare the elements as replaceable
+ * @todo  Optimize with memset 
+ *
+ **********************************************************/
 void SNSL_InitSamplesBuffer(STORED_SAMPLE *samples)
 {
     uint8 x;
@@ -716,28 +713,46 @@ void SNSL_InitSamplesBuffer(STORED_SAMPLE *samples)
     }
 }
 
-int SNSL_TimeToSec(unionRTCC t1)
+
+/**********************************************************
+ *
+ * @brief  Convert an RTCC union to seconds
+ * @return The number of seconds in the given union
+ * @todo   Take months and years into account. Failure to
+ *         do this will result in rollover errors
+ *
+ **********************************************************/
+int SNSL_TimeToSec(RTCC t1)
 {
-    /*
-     * This function needs to take months and days
-     * into account, otherwise we'll get incorrect
-     * readings when we change at these edge
-     * conditions
-     */
      uint8 hr, min, sec;
      hr = ((t1.u8.hour / 16)*10) + (t1.u8.hour % 16);
      min = ((t1.u8.min / 16)*10) + (t1.u8.min % 16);
      sec = ((t1.u8.sec / 16)*10) + (t1.u8.sec % 16);
-    return hr * 3600 +
-           min  * 60   +
+    return hr  * 3600 +
+           min * 60   +
            sec;
 }
 
-int SNSL_TimeDiff(unionRTCC t1, unionRTCC t2)
+
+/**********************************************************
+ *
+ * @brief  Calculate the difference between two RTCC unions
+ * @return The time-difference between two RTCC unions in
+ *         seconds
+ *
+ **********************************************************/
+int SNSL_TimeDiff(RTCC t1, RTCC t2)
 {
     return abs(SNSL_TimeToSec(t1) - SNSL_TimeToSec(t2));
 }
 
+
+/**********************************************************
+ *
+ * @brief  Find the oldest sample
+ * @return The index of the oldest sample
+ *
+ **********************************************************/
 uint8 SNSL_OldestSample(STORED_SAMPLE *samples)
 {
     int x,
@@ -752,16 +767,16 @@ uint8 SNSL_OldestSample(STORED_SAMPLE *samples)
         {
             continue;
         }
-        
+
         ++count;
-        
+
         if(count == 1)
         {
             newest_value = SNSL_TimeToSec(samples[x].ts);
             newest_index = x;
             continue;
         }
-        
+
         tmp = SNSL_TimeToSec(samples[x].ts);
 
         if(tmp < newest_value)
@@ -773,27 +788,6 @@ uint8 SNSL_OldestSample(STORED_SAMPLE *samples)
 
     return newest_index;
 }
-/*
-{
-    int x,
-        tmp,
-        oldest_index = 0,
-        oldest_value = 0;
-
-    for(x = 0; x < MAX_STORED_SAMPLES; ++x)
-    {
-        tmp = SNSL_TimeToSec(samples[x].ts);
-
-        if(tmp < oldest_value)
-        {
-            oldest_value = tmp;
-            oldest_index = x;
-        }
-    }
-
-    return oldest_index;
-}
-*/
 
 uint8 SNSL_TotalReplaceableSamples(STORED_SAMPLE *samples)
 {
@@ -819,7 +813,7 @@ uint8 SNSL_TotalByStatus(STORED_SAMPLE *samples, uint8 status)
     }
 
     return available;
-}    
+}
 
 uint8 SNSL_FirstReplaceableSample(STORED_SAMPLE *samples)
 {
@@ -868,16 +862,16 @@ uint8 SNSL_NewestSample(STORED_SAMPLE *samples)
         {
             continue;
         }
-        
+
         ++count;
-        
+
         if(count == 1)
         {
             newest_value = SNSL_TimeToSec(samples[x].ts);
             newest_index = x;
             continue;
         }
-        
+
         tmp = SNSL_TimeToSec(samples[x].ts);
 
         if(tmp > newest_value)
@@ -903,7 +897,7 @@ void SNSL_PrintSamples(STORED_SAMPLE *samples)
     puts("----------------------");
 }
 
-uint8 SNSL_ACKSample(STORED_SAMPLE *samples, unionRTCC t1)
+uint8 SNSL_ACKSample(STORED_SAMPLE *samples, RTCC t1)
 {
     uint8 x;
 

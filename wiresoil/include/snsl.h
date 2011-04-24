@@ -58,7 +58,7 @@ typedef struct _POLL
           attempts;
 } POLL;
 
-typedef union _unionRTCC
+typedef union _RTCC
 {
     struct   //four 16 bit registers
     {
@@ -72,7 +72,7 @@ typedef union _unionRTCC
         uint8 min;
     } u8;
     uint16 regs[4];
-} unionRTCC;
+} RTCC;
 
 typedef union _FLOAT
 {
@@ -83,9 +83,10 @@ typedef union _FLOAT
 typedef struct _STORED_SAMPLE
 {
     FLOAT samples[NUM_ADC_PROBES];
-    unionRTCC ts;
+    RTCC ts;
     int8 status;
 } STORED_SAMPLE;
+
 
 /***********************************************************
  * Function Headers
@@ -107,18 +108,18 @@ void    SNSL_PrintConfig(void);
 uint8   SNSL_SearchConfig(uint8 *, POLL *);
 void    SNSL_ParseConfigHeader(uint8 *, uint32 *, uint8 *);
 
-void    SNSL_LogPollEvent(uint8, unionRTCC *);
-void    SNSL_LogNodeSkipped(uint8, uint8, uint8, unionRTCC *);
-void    SNSL_LogResponseFailure(uint8, uint8, uint8, uint8, unionRTCC *);
-void    SNSL_LogPollingStats(unionRTCC *, uint8, uint8, uint8);
+void    SNSL_LogPollEvent(uint8, RTCC *);
+void    SNSL_LogNodeSkipped(uint8, uint8, uint8, RTCC *);
+void    SNSL_LogResponseFailure(uint8, uint8, uint8, uint8, RTCC *);
+void    SNSL_LogPollingStats(RTCC *, uint8, uint8, uint8);
 
 uint32  SNSL_Pow(uint8, uint8);
 uint32  SNSL_Atoi(uint8 *);
 void    SNSL_PrintPolls(POLL *);
 
 void    SNSL_InitSamplesBuffer(STORED_SAMPLE *);
-int     SNSL_TimeToSec(unionRTCC);
-int     SNSL_TimeDiff(unionRTCC, unionRTCC);
+int     SNSL_TimeToSec(RTCC);
+int     SNSL_TimeDiff(RTCC, RTCC);
 
 uint8   SNSL_TotalByStatus(STORED_SAMPLE *, uint8);
 uint8   SNSL_TotalSamplesInUse(STORED_SAMPLE *);
@@ -130,6 +131,6 @@ uint8   SNSL_OldestSample(STORED_SAMPLE *);
 
 void    SNSL_InsertSample(STORED_SAMPLE *, STORED_SAMPLE);
 void    SNSL_PrintSamples(STORED_SAMPLE *);
-uint8   SNSL_ACKSample(STORED_SAMPLE *, unionRTCC);
+uint8   SNSL_ACKSample(STORED_SAMPLE *, RTCC);
 
 #endif // SNSL_H
