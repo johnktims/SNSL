@@ -44,7 +44,8 @@ def startupEvent():
     #sleepTicks = 600 # this one represents "ticks", as used by sleep(), 10 minutes
     #sleepTicks = 300 # this one represents "ticks", as used by sleep(), 5 minutes
     #sleepTicks = 60 # for testing....
-    sleepTicks = 25
+    #sleepTicks = 25
+    sleepTicks = 300 #5 minutes == normal mode
 
     # The rest of these are in tenths of seconds
     wakeTime = 100      # 10 seconds
