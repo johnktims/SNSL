@@ -156,7 +156,6 @@ int SPI_Xfer(int spiDirection, uint8 *pSpiData)
     return bitData;
 }
 
-
 /**********************************************************
  *
  * @brief Initialize the pins for the SPI interface
@@ -175,7 +174,6 @@ void SPI_Init(void)
     PORT_CS = 0;
 }
 
-
 /**********************************************************
  *
  * @brief  Wait till one character is read and then return it
@@ -191,12 +189,11 @@ uint8 SPI_ReadWait(void)
     return spiData;
 }
 
-
 /**********************************************************
  *
  * @brief       Non-blocking read of one character from
  *              SPI bus
- * @param [out] 
+ * @param [out]
  * @return      The received character
  *
  **********************************************************/
@@ -204,7 +201,6 @@ uint8 SPI_Read(uint8 *pSpiData)
 {
     return SPI_Xfer(DIR_SPIREAD, pSpiData);
 }
-
 
 /**********************************************************
  *
@@ -216,7 +212,6 @@ void SPI_Write(uint8 spiData)
 {
     while(SPI_Xfer(DIR_SPIWRITE, &spiData));
 }
-
 
 /**********************************************************
  *
@@ -234,7 +229,6 @@ void SPI_WriteStr(const uint8 *spiData)
     // Carriage Return - every command needs one.
     SPI_Write(CR);
 }
-
 
 /**********************************************************
  *

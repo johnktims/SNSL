@@ -16,8 +16,8 @@
 
 /**********************************************************
  *
- * @brief Retrieve NODES.TXT and parse the nodes' names
- * @return uint8** The nodes' names in hex
+ * @brief  Retrieve NODES.TXT and parse the nodes' names
+ * @return The nodes' names in hex
  *
  **********************************************************/
 uint8 **SNSL_ParseNodeNames(void)
@@ -98,7 +98,6 @@ uint8 **SNSL_ParseNodeNames(void)
     return psz_nodes;
 }
 
-
 /**********************************************************
  *
  * @brief Temporary RTSP functions
@@ -159,7 +158,6 @@ void SNSL_SetNodeName(uint8 *node_name)
     doCommit(&fdata);  //write the data
 }
 
-
 /**********************************************************
  *
  * @brief Print a node's name
@@ -171,7 +169,6 @@ void SNSL_PrintNodeName(void)
     doRead(&fdata);
     outString((char *)fdata.dat.node_name);
 }
-
 
 /**********************************************************
  *
@@ -202,7 +199,6 @@ void SNSL_ParseConfigHeader(uint8 *hops, uint32 *timeout_per_hop,
     *max_attempts = sz_data[5];
     free(sz_data);
 }
-
 
 /**********************************************************
  *
@@ -284,7 +280,6 @@ POLL *SNSL_ParseConfig(uint8 *hops, uint32 *timeout_per_hop,
     return polls;
 }
 
-
 /**********************************************************
  *
  * @brief Write the three header bytes and the nodes to
@@ -344,7 +339,6 @@ void SNSL_WriteConfig(uint8 hops, uint32 timeout_per_hop,
     free(sz_out);
 }
 
-
 /**********************************************************
  *
  * @brief Find an entry in the array of POLLs
@@ -369,7 +363,6 @@ uint8 SNSL_SearchConfig(uint8 *name, POLL *polls)
 
     return UNKNOWN_NODE;
 }
-
 
 /**********************************************************
  *
@@ -426,7 +419,6 @@ POLL *SNSL_MergeConfig(void)
     return polls;
 }
 
-
 /**********************************************************
  *
  * @brief Print out all the nodes' names and numbers of
@@ -454,7 +446,6 @@ void SNSL_PrintConfig(void)
     free(polls);
 }
 
-
 /**********************************************************
  *
  * @brief Configure PIC for low power mode
@@ -479,7 +470,6 @@ void SNSL_ConfigLowPower(void)
     //CNPU1 = CN15 -> CN0 (don't want pull-up on CN1 and CN0)
     //CNPU1 = 0xFFFC;
 }
-
 
 /**********************************************************
  *
@@ -508,7 +498,7 @@ void SNSL_LogPollEvent(uint8 type, RTCC *u_RTCC)
                 u_RTCC->u8.sec,
                 "Started");
     }
-    
+
     // Polling has stopped.
     else if(type == 0x01)
     {
@@ -526,7 +516,6 @@ void SNSL_LogPollEvent(uint8 type, RTCC *u_RTCC)
     outString(log_out);
     VDIP_WriteFile(FILE_LOG, (uint8 *)log_out);
 }
-
 
 /**********************************************************
  *
@@ -555,7 +544,6 @@ void SNSL_LogNodeSkipped(uint8 c_ad1, uint8 c_ad2, uint8 c_ad3, RTCC *u_RTCC)
     VDIP_WriteFile(FILE_LOG, (uint8 *)log_out);
 }
 
-
 /**********************************************************
  *
  * @brief      Write event log entry for a node that
@@ -575,7 +563,6 @@ void SNSL_LogResponseFailure(uint8 attempts , uint8 c_ad1, uint8 c_ad2, uint8 c_
     VDIP_WriteFile(FILE_LOG, (uint8 *)log_out);
 }
 
-
 /**********************************************************
  *
  * @brief      Write polling summary event log
@@ -592,7 +579,6 @@ void SNSL_LogPollingStats(RTCC *u_RTCC, uint8 polls, uint8 ignored, uint8 failed
     outString(log_out);
     VDIP_WriteFile(FILE_LOG, (uint8 *)log_out);
 }
-
 
 /**********************************************************
  *
@@ -621,10 +607,10 @@ uint32 SNSL_Pow(uint8 base, uint8 power)
     return u32_retVal;
 }
 
-
 /**********************************************************
  *
- * @brief      Function convert string of character to integer value
+ * @brief      Function convert string of character to
+ *             integer value
  * @return     Integer conversion of string
  * @param [in] String of characters to convert
  *
@@ -652,7 +638,6 @@ uint32 SNSL_Atoi(uint8 *str)
     return (uint32)u32_return;
 }
 
-
 /**********************************************************
  *
  * @brief Create a config file with sane default values
@@ -669,7 +654,6 @@ void SNSL_CreateDefaultConfig(void)
     SNSL_PrintPolls(polls);
     free(polls);
 }
-
 
 /**********************************************************
  *
@@ -688,12 +672,11 @@ void SNSL_PrintPolls(POLL *polls)
     }
 }
 
-
 /**********************************************************
  *
  * @brief Set all of the date/time variables to zero, and
  *        declare the elements as replaceable
- * @todo  Optimize with memset 
+ * @todo  Optimize with memset
  *
  **********************************************************/
 void SNSL_InitSamplesBuffer(STORED_SAMPLE *samples)
@@ -712,7 +695,6 @@ void SNSL_InitSamplesBuffer(STORED_SAMPLE *samples)
         samples[x].status = STATUS_REPLACEABLE;
     }
 }
-
 
 /**********************************************************
  *
@@ -733,7 +715,6 @@ int SNSL_TimeToSec(RTCC t1)
            sec;
 }
 
-
 /**********************************************************
  *
  * @brief  Calculate the difference between two RTCC unions
@@ -745,7 +726,6 @@ int SNSL_TimeDiff(RTCC t1, RTCC t2)
 {
     return abs(SNSL_TimeToSec(t1) - SNSL_TimeToSec(t2));
 }
-
 
 /**********************************************************
  *
@@ -789,16 +769,36 @@ uint8 SNSL_OldestSample(STORED_SAMPLE *samples)
     return newest_index;
 }
 
+/**********************************************************
+ *
+ * @brief  Determine the number of elements already
+ *         transmitted to the collector
+ * @return The number of elements ready for replacement
+ *
+ **********************************************************/
 uint8 SNSL_TotalReplaceableSamples(STORED_SAMPLE *samples)
 {
     return SNSL_TotalByStatus(samples, STATUS_REPLACEABLE);
 }
 
+/**********************************************************
+ *
+ * @brief  Determine the number of unACKed samples ready
+ *         for transmission to the collector
+ * @return The number of elements already in use
+ *
+ **********************************************************/
 uint8 SNSL_TotalSamplesInUse(STORED_SAMPLE *samples)
 {
     return SNSL_TotalByStatus(samples, STATUS_IN_USE);
 }
 
+/**********************************************************
+ *
+ * @brief  Get the sum of elements with the given flag
+ * @return The sum of the elements with the given flag
+ *
+ **********************************************************/
 uint8 SNSL_TotalByStatus(STORED_SAMPLE *samples, uint8 status)
 {
     uint8 x,
@@ -815,6 +815,12 @@ uint8 SNSL_TotalByStatus(STORED_SAMPLE *samples, uint8 status)
     return available;
 }
 
+/**********************************************************
+ *
+ * @brief  Find the first replaceable sample
+ * @return The index of the first replaceable sample
+ *
+ **********************************************************/
 uint8 SNSL_FirstReplaceableSample(STORED_SAMPLE *samples)
 {
     uint8 x;
@@ -830,6 +836,14 @@ uint8 SNSL_FirstReplaceableSample(STORED_SAMPLE *samples)
     return STATUS_INVALID;
 }
 
+/**********************************************************
+ *
+ * @brief Put a sample in the buffer of samples
+ * @note  If we have any replaceable samples, replace
+ *        the the first replaceable sample. If the buffer
+ *        is full, replace the oldest sample.
+ *
+ **********************************************************/
 void SNSL_InsertSample(STORED_SAMPLE *samples, STORED_SAMPLE sample)
 {
     uint8 x,
@@ -848,6 +862,12 @@ void SNSL_InsertSample(STORED_SAMPLE *samples, STORED_SAMPLE sample)
     samples[x] = sample;
 }
 
+/**********************************************************
+ *
+ * @brief  Find the newest sample
+ * @return The index of the newest sample that is in use
+ *
+ **********************************************************/
 uint8 SNSL_NewestSample(STORED_SAMPLE *samples)
 {
     int x,
@@ -884,6 +904,11 @@ uint8 SNSL_NewestSample(STORED_SAMPLE *samples)
     return newest_index;
 }
 
+/**********************************************************
+ *
+ * @brief Print all of the samples
+ *
+ **********************************************************/
 void SNSL_PrintSamples(STORED_SAMPLE *samples)
 {
     uint8 x;
@@ -897,6 +922,15 @@ void SNSL_PrintSamples(STORED_SAMPLE *samples)
     puts("----------------------\n");
 }
 
+/**********************************************************
+ *
+ * @brief  Mark a sample as received by the collector
+ * @return 1 if found, 0 otherwise
+ * @note   Search for the sample with a time matching the
+ *         provided RTCC. If it has been found, mark it
+ *         as replaceable.
+ *
+ **********************************************************/
 uint8 SNSL_ACKSample(STORED_SAMPLE *samples, RTCC t1)
 {
     uint8 x;

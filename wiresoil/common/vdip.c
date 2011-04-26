@@ -60,7 +60,6 @@ void VDIP_Init(void)
     VDIP_DEBUG_OUT("VDIP_Init: Finished.");
 }
 
-
 /**********************************************************
  *
  * @brief  Sync the VDIP with the PIC. 'E' is sent to the
@@ -92,7 +91,6 @@ uint8 VDIP_Sync(void)
     return 1;
 }
 
-
 /**********************************************************
  *
  * @brief Put VDIP in Short Command Set mode.
@@ -120,7 +118,6 @@ uint8 VDIP_SCS(void)
     return 0;
 }
 
-
 /**********************************************************
  *
  * @brief Reset the VDIP
@@ -135,7 +132,6 @@ void VDIP_Reset(void)
     DELAY_MS(1000);
     VDIP_DEBUG_OUT("VDIP_Reset: Finished.");
 }
-
 
 /**********************************************************
  *
@@ -154,7 +150,7 @@ void VDIP_Reset(void)
 uint8 **VDIP_ListDir(void)
 {
     VDIP_DEBUG_OUT("VDIP_ListDir: Started.");
-    
+
     // Get the number of items in the directory
     uint32 u32_items = VDIP_DirItemCount();
     // Allocate memory for the array of pointers
@@ -201,7 +197,6 @@ uint8 **VDIP_ListDir(void)
     return data;
 }
 
-
 /**********************************************************
  *
  * @brief Clean up a multi-dimensional array returned
@@ -220,7 +215,6 @@ void VDIP_CleanupDirList(uint8 **data)
 
     free(data);
 }
-
 
 /**********************************************************
  *
@@ -260,12 +254,11 @@ uint32 VDIP_DirItemCount(void)
     return u32_items;
 }
 
-
 /**********************************************************
  *
- * @brief Find the size of the given file
- * @param [in] name The name of the file
- * @return uint8 The size of the file in bytes
+ * @brief      Find the size of the given file
+ * @param [in] The name of the file
+ * @return     The size of the file in bytes
  *
  **********************************************************/
 uint32 VDIP_FileSize(const uint8 *name)
@@ -309,7 +302,6 @@ uint32 VDIP_FileSize(const uint8 *name)
     return u32_size;
 }
 
-
 /**********************************************************
  *
  * @brief  Determine whether or not a disk exists
@@ -344,7 +336,6 @@ uint8 VDIP_DiskExists(void)
     VDIP_DEBUG_OUT("VDIP_DiskExists: Finished.");
     return 0x1;
 }
-
 
 /**********************************************************
  *
@@ -384,7 +375,6 @@ uint8 VDIP_FileExists(const uint8 *name)
     return 0x1;
 }
 
-
 /**********************************************************
  *
  * @brief      Read a file into a string
@@ -415,7 +405,6 @@ uint8 *VDIP_ReadFile(const uint8 *name)
     return data;
 }
 
-
 /**********************************************************
  *
  * @brief      Open a file for writing
@@ -430,7 +419,6 @@ void VDIP_WriteFile(const uint8 *name, const uint8 *data)
     VDIP_WriteFileN(name, data, u32_size);
     VDIP_DEBUG_OUT("VDIP_WriteFile: Finished.");
 }
-
 
 /**********************************************************
  *
@@ -470,7 +458,7 @@ void VDIP_WriteFileN(const uint8 *name, const uint8 *data, uint32 u32_size)
     SPI_Write(CR);
 
     VDIP_DEBUG_OUT("Write the actual message.");
-    
+
     // Use SPI_WriteStrN since data contains binary data
     // which could prematurely terminate the writing process
     SPI_WriteStrN(data, u32_size);
@@ -483,7 +471,6 @@ void VDIP_WriteFileN(const uint8 *name, const uint8 *data, uint32 u32_size)
     VDIP_Sync();
     VDIP_DEBUG_OUT("VDIP_WriteFileN: Finished.");
 }
-
 
 /**********************************************************
  *
@@ -504,7 +491,6 @@ void VDIP_DeleteFile(const uint8 *name)
 
     VDIP_DEBUG_OUT("VDIP_DeleteFile: Finished.");
 }
-
 
 /**********************************************************
  *
